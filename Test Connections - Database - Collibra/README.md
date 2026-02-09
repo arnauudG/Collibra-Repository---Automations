@@ -60,21 +60,17 @@ flowchart TD
     I -->|Yes| K[For Each Database Connection]
     K --> L[Trigger Metadata Synchronization]
     L --> M{Job ID<br/>Returned?}
-    M -->|No| N[Mark as Success<br/>No Job ID]
+    M -->|No| N[Skip: Unable to<br/>Monitor Status]
     M -->|Yes| O[Monitor Job Status]
     O --> P{Job<br/>Status?}
-    P -->|Completed| Q[Mark as Successful]
+    P -->|Completed| K
     P -->|Failed| R[Fetch All Owners<br/>from ownerIds Array]
     P -->|Timeout/Error| S[Fetch All Owners<br/>from ownerIds Array]
     R --> T[Format Notification Message]
     S --> T
-    T --> U[Add to Failed List]
-    N --> V{More<br/>Connections?}
-    Q --> V
-    U --> V
-    V -->|Yes| K
-    V -->|No| W[Generate Summary Report]
-    W --> X[Prepare Notification Data]
+    T --> K
+    N --> K
+    K -->|All Processed| X[Prepare Notification Data]
     X --> Z[Complete]
     
     style A fill:#e1f5ff
@@ -86,7 +82,7 @@ flowchart TD
     style O fill:#fff4e1
     style R fill:#ffe1e1
     style T fill:#ffe1e1
-    style W fill:#e1ffe1
+    style X fill:#e1ffe1
     style Z fill:#e1ffe1
 ```
 
@@ -95,9 +91,10 @@ flowchart TD
 2. **Connection Discovery**: Fetch and filter cataloged database connections
 3. **Synchronization**: Trigger metadata sync jobs for each database
 4. **Monitoring**: Track job status until completion or failure
-5. **Owner Retrieval**: Fetch all owners from `ownerIds` array (supports multiple owners)
-6. **Notification Preparation**: Format human-readable messages for each failed database
-7. **Reporting**: Generate summary report with notification data ready for use
+5. **Owner Retrieval**: Fetch all owners from `ownerIds` array for failed synchronizations (supports multiple owners)
+6. **Notification Preparation**: Format human-readable messages for each failed database and prepare notification data structure
+
+**Note on "No Job ID" case:** If the synchronization API doesn't return a job ID, the process skips monitoring for that database. This can occur if the sync completes immediately or if the API response format is unexpected. The database is tracked separately (not marked as failed) since its status cannot be determined.
 
 ## Installation
 
