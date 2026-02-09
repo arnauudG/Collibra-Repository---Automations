@@ -58,20 +58,18 @@ flowchart TD
     H --> I{Connections<br/>Found?}
     I -->|No| J[Exit: No Connections]
     I -->|Yes| K[For Each Database Connection]
-    K --> L[Trigger Metadata Synchronization]
+    K --> L[Sync Metadata]
     L --> M{Job ID<br/>Returned?}
     M -->|No| N[Skip: Unable to<br/>Monitor Status]
     M -->|Yes| O[Monitor Job Status]
     O --> P{Job<br/>Status?}
     P -->|Completed| K
-    P -->|Failed| R[Fetch All Owners<br/>from ownerIds Array]
-    P -->|Timeout/Error| S[Fetch All Owners<br/>from ownerIds Array]
-    R --> T[Format Notification Message]
-    S --> T
+    P -->|Failed| R[Fetch Owners<br/>from ownerIds Array]
+    P -->|Timeout/Error| R
+    R --> T[Prepare Notification Message]
     T --> K
     N --> K
-    K -->|All Processed| X[Prepare Notification Data]
-    X --> Z[Complete]
+    K -->|All Processed| Z[Complete]
     
     style A fill:#e1f5ff
     style B fill:#e1f5ff
@@ -82,17 +80,17 @@ flowchart TD
     style O fill:#fff4e1
     style R fill:#ffe1e1
     style T fill:#ffe1e1
-    style X fill:#e1ffe1
     style Z fill:#e1ffe1
 ```
 
-**Key Process Steps:**
+**Key Process Steps (per database connection):**
 1. **Authentication**: OAuth connection test and validation
 2. **Connection Discovery**: Fetch and filter cataloged database connections
-3. **Synchronization**: Trigger metadata sync jobs for each database
-4. **Monitoring**: Track job status until completion or failure
-5. **Owner Retrieval**: Fetch all owners from `ownerIds` array for failed synchronizations (supports multiple owners)
-6. **Notification Preparation**: Format human-readable messages for each failed database and prepare notification data structure
+3. **For Each Database Connection**:
+   - **Synchronization**: Trigger metadata synchronization job
+   - **Monitoring**: Track job status until completion or failure
+   - **If Failed**: Fetch all owners from `ownerIds` array (supports multiple owners)
+   - **If Failed**: Prepare notification message for the failed database
 
 **Note on "No Job ID" case:** If the synchronization API doesn't return a job ID, the process skips monitoring for that database. This can occur if the sync completes immediately or if the API response format is unexpected. The database is tracked separately (not marked as failed) since its status cannot be determined.
 
