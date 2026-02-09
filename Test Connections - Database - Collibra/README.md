@@ -62,7 +62,7 @@ flowchart TD
     K --> L[Sync Metadata]
     L --> M[Monitor Job Status]
     M --> N{Job<br/>Status?}
-    N -->|Completed| K
+    N -->|Completed| O[Exit: Connection Complete]
     N -->|Failed/Error| P[Fetch Owners from ownerIds Array]
     P --> Q[Prepare Notification Message]
     Q --> K
