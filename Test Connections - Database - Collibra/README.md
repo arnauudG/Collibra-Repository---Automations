@@ -1,33 +1,44 @@
-# Collibra API Client
+# Collibra Database Metadata Synchronization & Monitoring Tool
 
-A clean, well-structured Python client for interacting with Collibra's REST API using OAuth 2.0 client credentials authentication.
+An automated tool for testing, synchronizing, and monitoring database metadata synchronization jobs in Collibra. This tool identifies failed database synchronizations, retrieves database owner information, and prepares notification data for alerting owners about synchronization failures.
 
 ## Overview
 
-This library provides a production-ready Python client for Collibra's REST API with a focus on:
+This tool automates the complete workflow of database metadata synchronization in Collibra:
+
+- **Automated Synchronization**: Triggers metadata synchronization jobs for all cataloged database connections
+- **Job Monitoring**: Tracks synchronization job status until completion or failure
+- **Failure Detection**: Identifies databases with failed synchronizations
+- **Owner Identification**: Retrieves database owner information from Collibra's Catalog Database API
+- **Notification Preparation**: Formats human-readable notification messages and exports structured JSON data for integration with notification systems (email, Slack, etc.)
+- **Comprehensive Reporting**: Provides detailed summary reports with owner information for failed databases
+
+**Built on a clean, production-ready Python client** for Collibra's REST API with:
 - **Clean Architecture**: Separation of concerns with modular design
 - **Type Safety**: Full type hints for better IDE support and error detection
 - **Error Handling**: Comprehensive exception hierarchy for precise error handling
-- **Developer Experience**: Intuitive API with comprehensive documentation
 - **Production Ready**: Retry logic, token management, and robust error handling
 
-## Features
+## Key Features
 
+### Core Functionality
+- ✅ **Automated Database Synchronization**: Triggers metadata synchronization for all cataloged database connections
+- ✅ **Job Status Monitoring**: Tracks synchronization jobs until completion, failure, or timeout
+- ✅ **Failure Detection**: Identifies databases with failed synchronizations and captures error details
+- ✅ **Owner Information Retrieval**: Fetches database owners from Catalog Database API (`ownerIds` array)
+- ✅ **Multiple Owners Support**: Handles databases with multiple owners gracefully
+- ✅ **Notification Preparation**: Formats human-readable notification messages ready for email/Slack
+- ✅ **JSON Export**: Exports failed databases with owner information to structured JSON format
+- ✅ **Comprehensive Reporting**: Provides detailed summary reports with owner information
+
+### Technical Features
 - ✅ **OAuth 2.0 Authentication**: Client credentials flow with automatic token management
 - ✅ **Token Lifecycle Management**: Automatic token caching and refresh with expiration buffer
 - ✅ **Retry Logic**: Built-in retry strategy for transient failures (429, 5xx errors)
-- ✅ **Clean Architecture**: Separation of concerns (auth, client, config)
+- ✅ **Clean Architecture**: Separation of concerns (auth, client, config, catalog, notifications)
 - ✅ **Type Hints**: Full type annotations for better IDE support and type checking
 - ✅ **Comprehensive Error Handling**: Custom exception hierarchy with detailed error information
 - ✅ **Configuration Management**: Support for environment variables and direct initialization
-- ✅ **Dependency Injection**: Authenticator injection for testing and flexibility
-- ✅ **Database Connection Management**: List, refresh, test, and synchronize database connections
-- ✅ **Metadata Synchronization**: Trigger and monitor database metadata synchronization jobs
-- ✅ **Owner Information Retrieval**: Fetch database owners from Catalog Database API (`ownerIds` array)
-- ✅ **Multiple Owners Support**: Handle databases with multiple owners gracefully
-- ✅ **Formatted Notifications**: Human-readable notification messages ready for email/Slack
-- ✅ **JSON Export**: Export failed databases with owner information to JSON for notifications
-- ✅ **Main Orchestrator Script**: Complete end-to-end workflow script (`main.py`)
 - ✅ **Test Suite**: Comprehensive pytest test suite with integration and unit tests
 - ✅ **Pre-commit Hooks**: Automated code quality checks (linting, formatting, type checking)
 
@@ -62,12 +73,9 @@ flowchart TD
     Q --> V
     U --> V
     V -->|Yes| K
-    V -->|No| W[Display Summary Report]
-    W --> X{Failed<br/>Databases?}
-    X -->|Yes| Y[Write JSON File<br/>with Owners & Messages]
-    X -->|No| Z[Exit Successfully]
-    Y --> AA[Display JSON File Path]
-    AA --> Z
+    V -->|No| W[Generate Summary Report]
+    W --> X[Prepare Notification Data]
+    X --> Z[Complete]
     
     style A fill:#e1f5ff
     style B fill:#e1f5ff
@@ -78,7 +86,7 @@ flowchart TD
     style O fill:#fff4e1
     style R fill:#ffe1e1
     style T fill:#ffe1e1
-    style Y fill:#e1ffe1
+    style W fill:#e1ffe1
     style Z fill:#e1ffe1
 ```
 
@@ -89,8 +97,7 @@ flowchart TD
 4. **Monitoring**: Track job status until completion or failure
 5. **Owner Retrieval**: Fetch all owners from `ownerIds` array (supports multiple owners)
 6. **Notification Preparation**: Format human-readable messages for each failed database
-7. **Export**: Generate JSON file with all failed databases, owners, and notification messages
-8. **Reporting**: Display comprehensive summary with owner information
+7. **Reporting**: Generate summary report with notification data ready for use
 
 ## Installation
 
@@ -148,23 +155,25 @@ uv sync --extra dev
 
 ## Usage
 
-### Quick Start - Main Orchestrator Script
+### Quick Start - Automated Database Synchronization & Monitoring
 
-The easiest way to run the complete workflow is using the main orchestrator script:
+Run the complete automated workflow to synchronize all database metadata and identify failures:
 
 ```bash
 python3 main.py
 ```
 
-This script will:
-1. ✅ Load configuration from `.env`
-2. ✅ Test OAuth connection
-3. ✅ Fetch all database connections
-4. ✅ Synchronize metadata for each database
-5. ✅ Monitor job status until completion
-6. ✅ Fetch and display owners for failing databases
-7. ✅ Provide comprehensive summary report
-8. ✅ **Prepare notification data structure** (stored in variable for later use)
+**What this does:**
+1. ✅ Loads configuration from `.env`
+2. ✅ Tests OAuth connection to Collibra
+3. ✅ Fetches all cataloged database connections
+4. ✅ Triggers metadata synchronization for each database
+5. ✅ Monitors job status until completion or failure
+6. ✅ Identifies failed synchronizations
+7. ✅ Retrieves owner information for failed databases
+8. ✅ Formats notification messages for each failure
+9. ✅ Provides comprehensive summary report
+10. ✅ **Prepares notification data structure** ready for email/Slack integration
 
 **Example Output:**
 ```
@@ -266,10 +275,12 @@ import json
 json_output = json.dumps(notification_data, indent=2)
 ```
 
-### Basic Usage
+### Programmatic Usage
+
+If you need to integrate this functionality into your own scripts:
 
 ```python
-from collibra_client import CollibraClient, CollibraConfig
+from collibra_client import CollibraClient, CollibraConfig, DatabaseConnectionManager
 
 # Load configuration from environment variables
 config = CollibraConfig.from_env()
@@ -281,42 +292,17 @@ client = CollibraClient(
     client_secret=config.client_secret,
 )
 
-# Test connection
-client.test_connection()
+# Create database connection manager
+db_manager = DatabaseConnectionManager(client=client, use_oauth=True)
 
-# Make API calls
-users = client.get("/rest/2.0/users")
-```
+# List all database connections
+connections = db_manager.list_database_connections()
 
-### Main Orchestrator Script
+# Synchronize metadata for a specific database
+sync_result = db_manager.synchronize_database_metadata(connections[0].database_id)
 
-The recommended way to run the complete workflow is using the main orchestrator script:
-
-```bash
-python3 main.py
-```
-
-This script orchestrates the complete workflow:
-1. ✅ Loads configuration from `.env`
-2. ✅ Tests OAuth connection
-3. ✅ Fetches all database connections
-4. ✅ Synchronizes metadata for each database
-5. ✅ Monitors job status until completion
-6. ✅ **Fetches and displays owners for failing databases**
-7. ✅ Provides comprehensive summary report
-
-**Example Output:**
-```
-FAILED DATABASES AND THEIR OWNERS
-================================================================================
-
-Database: DS_DEMO_DATA
-  Database ID: 0197e4de-e599-75c4-8fff-9b0fd56508c9
-  Error: Database API request failed: 500 Server Error...
-  Owner:
-    - Name: Gorik Desmet
-    - Email: orik@datashift.eu
-    - Owner ID: 474d1818-0822-4570-bd67-8f629730ce61
+# Monitor job status
+job_status = client.get_job_status(sync_result["jobId"])
 ```
 
 ### Testing
