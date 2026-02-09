@@ -65,7 +65,8 @@ flowchart TD
     N -->|Completed| O[Exit: Connection Complete]
     N -->|Failed/Error| P[Fetch Owners from ownerIds Array]
     P --> Q[Prepare Notification Message]
-    Q --> K
+    Q --> R[Send Notification to Owners]
+    R --> K
     
     style A fill:#e1f5ff
     style B fill:#e1f5ff
@@ -77,6 +78,7 @@ flowchart TD
     style M fill:#fff4e1
     style P fill:#ffe1e1
     style Q fill:#ffe1e1
+    style R fill:#ffe1e1
 ```
 
 **Key Process Steps (per database connection):**
