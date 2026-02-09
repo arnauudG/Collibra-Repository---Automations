@@ -62,13 +62,10 @@ flowchart TD
     K --> L[Sync Metadata]
     L --> M[Monitor Job Status]
     M --> N{Job<br/>Status?}
-    N -->|Completed| O[Success: Continue to Next Connection]
+    N -->|Completed| K
     N -->|Failed/Error| P[Fetch Owners from ownerIds Array]
     P --> Q[Prepare Notification Message]
-    Q --> O
-    O --> K
-    
-    K -->|All Connections Processed| Z[Complete]
+    Q --> K
     
     style A fill:#e1f5ff
     style B fill:#e1f5ff
@@ -80,7 +77,6 @@ flowchart TD
     style M fill:#fff4e1
     style P fill:#ffe1e1
     style Q fill:#ffe1e1
-    style Z fill:#e1ffe1
 ```
 
 **Key Process Steps (per database connection):**
