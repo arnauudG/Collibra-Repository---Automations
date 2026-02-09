@@ -8,13 +8,13 @@ This repository contains various projects and automations for Collibra Data Inte
 
 **Location:** `Test Connections - Database - Collibra/`
 
-An automated tool for testing, synchronizing, and monitoring database metadata synchronization jobs in Collibra. This tool identifies failed database synchronizations, retrieves database owner information, and prepares notification data for alerting owners about synchronization failures.
+An automated tool for testing, synchronizing, and monitoring database metadata synchronization jobs in Collibra. This tool identifies failed database synchronizations, retrieves database owner information, and sends notifications to owners about synchronization failures.
 
 **Key Features:**
 - Automated metadata synchronization for all cataloged database connections
 - Job status monitoring and failure detection
 - Owner information retrieval from Catalog Database API
-- Notification message formatting and JSON export
+- Automatic notification sending to database owners for failures
 - Comprehensive reporting with owner details
 
 **Quick Start:**
