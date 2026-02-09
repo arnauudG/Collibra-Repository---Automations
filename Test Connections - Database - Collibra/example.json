@@ -5,65 +5,65 @@
     {
       "database": {
         "name": "DS_DEMO_DATA",
-        "database_id": "0197e4de-e599-75c4-8fff-9b0fd56508c9",
-        "connection_id": "f919489f-2942-418c-a282-4473a1d7492a"
+        "database_id": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+        "connection_id": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
       },
-      "error": "Database API request failed: 500 Server Error: Internal Server Error for url: https://training-datashift.collibra.com/rest/catalogDatabase/v1/databases/0197e4de-e599-75c4-8fff-9b0fd56508c9/synchronizeMetadata",
+      "error": "Database API request failed: 500 Server Error: Internal Server Error for url: https://XXX.collibra.com/rest/catalogDatabase/v1/databases/XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX/synchronizeMetadata",
       "owners": [
         {
-          "owner_id": "474d1818-0822-4570-bd67-8f629730ce61",
-          "email": "orik@datashift.eu",
+          "owner_id": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+          "email": "XXX@example.com",
           "username": null,
-          "name": "Gorik Desmet"
+          "name": "XXX XXX"
         },
         {
-          "owner_id": "00000000-0000-0000-0000-000000900002",
-          "email": "fen@datashift.eu",
+          "owner_id": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+          "email": "XXX@example.com",
           "username": null,
-          "name": "Admin Istrator"
+          "name": "XXX XXX"
         }
       ],
-      "notification_message": "Hello,\n\nWe wanted to inform you that the metadata synchronization for your database has failed.\n\nDatabase: DS_DEMO_DATA\nDatabase ID: 0197e4de-e599-75c4-8fff-9b0fd56508c9\nConnection ID: f919489f-2942-418c-a282-4473a1d7492a\n\nError Details:\n  Database API request failed: 500 Server Error: Internal Server Error for url: https://training-datashift.collibra.com/rest/catalogDatabase/v1/databases/0197e4de-e599-75c4-8fff-9b0fd56508c9/synchronizeMetadata\n\nThis notification is being sent to all 2 owners of this database:\n\n  1. Gorik Desmet (orik@datashift.eu)\n  2. Admin Istrator (fen@datashift.eu)\n\nPlease review the database connection settings and credentials to resolve this issue.\n\nIf you need assistance, please contact your Collibra administrator.\n\nBest regards,\nCollibra Database Synchronization System"
+      "notification_message": "Hello,\n\nWe wanted to inform you that the metadata synchronization for your database has failed.\n\nDatabase: DS_DEMO_DATA\nDatabase ID: XXXXXXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX\nConnection ID: XXXXXXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX\n\nError Details:\n  Database API request failed: 500 Server Error: Internal Server Error for url: https://XXX.collibra.com/rest/catalogDatabase/v1/databases/XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX/synchronizeMetadata\n\nThis notification is being sent to all 2 owners of this database:\n\n  1. XXX XXX (XXX@example.com)\n  2. XXX XXX (XXX@example.com)\n\nPlease review the database connection settings and credentials to resolve this issue.\n\nIf you need assistance, please contact your Collibra administrator.\n\nBest regards,\nCollibra Database Synchronization System"
     },
     {
       "database": {
         "name": "SNOWFLAKE",
-        "database_id": "0197f9b1-eb63-7d7f-948f-762b4050673e",
-        "connection_id": "67c706e9-0ca1-472a-82fe-69e277f13fb0"
+        "database_id": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+        "connection_id": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
       },
-      "error": "Database API request failed: 400 Client Error: Bad Request for url: https://training-datashift.collibra.com/rest/catalogDatabase/v1/databases/0197f9b1-eb63-7d7f-948f-762b4050673e/synchronizeMetadata",
+      "error": "Database API request failed: 400 Client Error: Bad Request for url: https://XXX.collibra.com/rest/catalogDatabase/v1/databases/XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX/synchronizeMetadata",
       "owners": [
         {
-          "owner_id": "474d1818-0822-4570-bd67-8f629730ce61",
-          "email": "orik@datashift.eu",
+          "owner_id": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+          "email": "XXX@example.com",
           "username": null,
-          "name": "Gorik Desmet"
+          "name": "XXX XXX"
         },
         {
-          "owner_id": "00000000-0000-0000-0000-000000900002",
-          "email": "fen@datashift.eu",
+          "owner_id": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+          "email": "XXX@example.com",
           "username": null,
-          "name": "Admin Istrator"
+          "name": "XXX XXX"
         }
       ],
-      "notification_message": "Hello,\n\nWe wanted to inform you that the metadata synchronization for your database has failed.\n\nDatabase: SNOWFLAKE\nDatabase ID: 0197f9b1-eb63-7d7f-948f-762b4050673e\nConnection ID: 67c706e9-0ca1-472a-82fe-69e277f13fb0\n\nError Details:\n  Database API request failed: 400 Client Error: Bad Request for url: https://training-datashift.collibra.com/rest/catalogDatabase/v1/databases/0197f9b1-eb63-7d7f-948f-762b4050673e/synchronizeMetadata\n\nThis notification is being sent to all 2 owners of this database:\n\n  1. Gorik Desmet (orik@datashift.eu)\n  2. Admin Istrator (fen@datashift.eu)\n\nPlease review the database connection settings and credentials to resolve this issue.\n\nIf you need assistance, please contact your Collibra administrator.\n\nBest regards,\nCollibra Database Synchronization System"
+      "notification_message": "Hello,\n\nWe wanted to inform you that the metadata synchronization for your database has failed.\n\nDatabase: SNOWFLAKE\nDatabase ID: XXXXXXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX\nConnection ID: XXXXXXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX\n\nError Details:\n  Database API request failed: 400 Client Error: Bad Request for url: https://XXX.collibra.com/rest/catalogDatabase/v1/databases/XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX/synchronizeMetadata\n\nThis notification is being sent to all 2 owners of this database:\n\n  1. XXX XXX (XXX@example.com)\n  2. XXX XXX (XXX@example.com)\n\nPlease review the database connection settings and credentials to resolve this issue.\n\nIf you need assistance, please contact your Collibra administrator.\n\nBest regards,\nCollibra Database Synchronization System"
     },
     {
       "database": {
         "name": "SNOWFLAKE_LEARNING_DB",
-        "database_id": "019c2d0d-37e7-7622-8776-eb5de22e867d",
-        "connection_id": "b0964ed6-32c7-4b02-b119-90e373ac5ceb"
+        "database_id": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+        "connection_id": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
       },
-      "error": "Database API request failed: 400 Client Error: Bad Request for url: https://training-datashift.collibra.com/rest/catalogDatabase/v1/databases/019c2d0d-37e7-7622-8776-eb5de22e867d/synchronizeMetadata",
+      "error": "Database API request failed: 400 Client Error: Bad Request for url: https://XXX.collibra.com/rest/catalogDatabase/v1/databases/XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX/synchronizeMetadata",
       "owners": [
         {
-          "owner_id": "00000000-0000-0000-0000-000000900002",
-          "email": "fen@datashift.eu",
+          "owner_id": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+          "email": "XXX@example.com",
           "username": null,
-          "name": "Admin Istrator"
+          "name": "XXX XXX"
         }
       ],
-      "notification_message": "Hello,\n\nWe wanted to inform you that the metadata synchronization for your database has failed.\n\nDatabase: SNOWFLAKE_LEARNING_DB\nDatabase ID: 019c2d0d-37e7-7622-8776-eb5de22e867d\nConnection ID: b0964ed6-32c7-4b02-b119-90e373ac5ceb\n\nError Details:\n  Database API request failed: 400 Client Error: Bad Request for url: https://training-datashift.collibra.com/rest/catalogDatabase/v1/databases/019c2d0d-37e7-7622-8776-eb5de22e867d/synchronizeMetadata\n\nThis notification is being sent to you as the owner of this database.\nOwner: Admin Istrator\n\nPlease review the database connection settings and credentials to resolve this issue.\n\nIf you need assistance, please contact your Collibra administrator.\n\nBest regards,\nCollibra Database Synchronization System"
+      "notification_message": "Hello,\n\nWe wanted to inform you that the metadata synchronization for your database has failed.\n\nDatabase: SNOWFLAKE_LEARNING_DB\nDatabase ID: XXXXXXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX\nConnection ID: XXXXXXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX\n\nError Details:\n  Database API request failed: 400 Client Error: Bad Request for url: https://XXX.collibra.com/rest/catalogDatabase/v1/databases/XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX/synchronizeMetadata\n\nThis notification is being sent to you as the owner of this database.\nOwner: XXX XXX\n\nPlease review the database connection settings and credentials to resolve this issue.\n\nIf you need assistance, please contact your Collibra administrator.\n\nBest regards,\nCollibra Database Synchronization System"
     }
   ]
 }
