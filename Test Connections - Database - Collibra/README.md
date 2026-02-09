@@ -66,19 +66,6 @@ flowchart TD
     N -->|Failed/Error| P[Fetch Owners from ownerIds Array]
     P --> Q[Prepare Notification Message]
     Q --> R[Send Notification to Owners]
-    R --> K
-    
-    style A fill:#e1f5ff
-    style B fill:#e1f5ff
-    style C fill:#e1f5ff
-    style F fill:#e1f5ff
-    style G fill:#e1f5ff
-    style K fill:#fff4e1
-    style L fill:#fff4e1
-    style M fill:#fff4e1
-    style P fill:#ffe1e1
-    style Q fill:#ffe1e1
-    style R fill:#ffe1e1
 ```
 
 **Key Process Steps (per database connection):**
