@@ -57,29 +57,29 @@ flowchart TD
     G --> H[Filter: Edge ID + Database ID]
     H --> I{Connections<br/>Found?}
     I -->|No| J[Exit: No Connections]
-    I -->|Yes| K[For Each Database Connection]
+    I -->|Yes| K[Loop: For Each Database Connection]
+    
     K --> L[Sync Metadata]
-    L --> M{Job ID<br/>Returned?}
-    M -->|No| N[Skip: Unable to<br/>Monitor Status]
-    M -->|Yes| O[Monitor Job Status]
-    O --> P{Job<br/>Status?}
-    P -->|Completed| K
-    P -->|Failed| R[Fetch Owners<br/>from ownerIds Array]
-    P -->|Timeout/Error| R
-    R --> T[Prepare Notification Message]
-    T --> K
-    N --> K
-    K -->|All Processed| Z[Complete]
+    L --> M[Monitor Job Status]
+    M --> N{Job<br/>Status?}
+    N -->|Completed| O[Success: Continue to Next Connection]
+    N -->|Failed/Error| P[Fetch Owners from ownerIds Array]
+    P --> Q[Prepare Notification Message]
+    Q --> O
+    O --> K
+    
+    K -->|All Connections Processed| Z[Complete]
     
     style A fill:#e1f5ff
     style B fill:#e1f5ff
     style C fill:#e1f5ff
     style F fill:#e1f5ff
     style G fill:#e1f5ff
+    style K fill:#fff4e1
     style L fill:#fff4e1
-    style O fill:#fff4e1
-    style R fill:#ffe1e1
-    style T fill:#ffe1e1
+    style M fill:#fff4e1
+    style P fill:#ffe1e1
+    style Q fill:#ffe1e1
     style Z fill:#e1ffe1
 ```
 
