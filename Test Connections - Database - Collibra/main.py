@@ -1,42 +1,26 @@
 #!/usr/bin/env python3
 """
-Main orchestrator script for Collibra Database Connection Testing.
+Main orchestrator script for Collibra Database Connection Synchronization & Monitoring.
 
 This script orchestrates the complete workflow:
 1. Tests OAuth connection
 2. Lists all database connections
 3. Synchronizes metadata for each database
 4. Monitors job status
-5. Fetches and displays owners for failing databases
+5. For failed synchronizations: fetches owners and sends notifications
 6. Provides comprehensive summary report
-7. Prepares notification data structure (stored in variable)
-
-The notification data structure contains:
-- Database name, ID, and connection ID
-- Error message
-- Owner information (name, email, username, owner ID) - supports multiple owners
-- Pre-formatted notification messages
 
 Usage:
     python3 main.py
 
-Output:
-    Returns notification_data dictionary variable containing all failed databases
-    and their owner information, ready for use in notification systems.
-    
-    Example structure:
-    {
-        "generated_at": "2024-01-01T12:00:00",
-        "total_failed": 3,
-        "failed_databases": [
-            {
-                "database": {"name": "...", "database_id": "...", "connection_id": "..."},
-                "error": "...",
-                "owners": [{"owner_id": "...", "name": "...", "email": "..."}],
-                "notification_message": "Hello,\n\nWe wanted to inform you..."
-            }
-        ]
-    }
+The script processes each database connection:
+- Triggers metadata synchronization
+- Monitors job status until completion or failure
+- If failed: fetches all owners from ownerIds array
+- If failed: prepares and sends notification messages to owners
+- Continues to next connection
+
+Notifications are sent automatically to all owners when a database synchronization fails.
 """
 
 import sys

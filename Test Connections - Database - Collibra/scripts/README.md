@@ -10,7 +10,7 @@ This directory contains utility scripts for manual testing and examples. These a
 python3 main.py
 ```
 
-This script orchestrates everything from connection testing to owner display. See the main `README.md` for details.
+This script orchestrates everything from connection testing to sending notifications to owners. See the main `README.md` for details.
 
 ## Utility Scripts
 

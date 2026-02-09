@@ -1,6 +1,6 @@
 # Collibra Database Metadata Synchronization & Monitoring Tool
 
-An automated tool for testing, synchronizing, and monitoring database metadata synchronization jobs in Collibra. This tool identifies failed database synchronizations, retrieves database owner information, and prepares notification data for alerting owners about synchronization failures.
+An automated tool for testing, synchronizing, and monitoring database metadata synchronization jobs in Collibra. This tool identifies failed database synchronizations, retrieves database owner information, and sends notifications to owners about synchronization failures.
 
 ## Overview
 
@@ -10,7 +10,7 @@ This tool automates the complete workflow of database metadata synchronization i
 - **Job Monitoring**: Tracks synchronization job status until completion or failure
 - **Failure Detection**: Identifies databases with failed synchronizations
 - **Owner Identification**: Retrieves database owner information from Collibra's Catalog Database API
-- **Notification Preparation**: Formats human-readable notification messages and exports structured JSON data for integration with notification systems (email, Slack, etc.)
+- **Notification Sending**: Formats human-readable notification messages and sends them to database owners for failed synchronizations
 - **Comprehensive Reporting**: Provides detailed summary reports with owner information for failed databases
 
 **Built on a clean, production-ready Python client** for Collibra's REST API with:
@@ -27,8 +27,8 @@ This tool automates the complete workflow of database metadata synchronization i
 - ✅ **Failure Detection**: Identifies databases with failed synchronizations and captures error details
 - ✅ **Owner Information Retrieval**: Fetches database owners from Catalog Database API (`ownerIds` array)
 - ✅ **Multiple Owners Support**: Handles databases with multiple owners gracefully
-- ✅ **Notification Preparation**: Formats human-readable notification messages ready for email/Slack
-- ✅ **JSON Export**: Exports failed databases with owner information to structured JSON format
+- ✅ **Notification Preparation**: Formats human-readable notification messages for failed databases
+- ✅ **Notification Sending**: Sends notifications to database owners when synchronizations fail
 - ✅ **Comprehensive Reporting**: Provides detailed summary reports with owner information
 
 ### Technical Features
@@ -76,6 +76,7 @@ flowchart TD
    - **Monitoring**: Track job status until completion or failure
    - **If Failed**: Fetch all owners from `ownerIds` array (supports multiple owners)
    - **If Failed**: Prepare notification message for the failed database
+   - **If Failed**: Send notification to owners
 
 **Note on "No Job ID" case:** If the synchronization API doesn't return a job ID, the process skips monitoring for that database. This can occur if the sync completes immediately or if the API response format is unexpected. The database is tracked separately (not marked as failed) since its status cannot be determined.
 
@@ -152,8 +153,8 @@ python3 main.py
 6. ✅ Identifies failed synchronizations
 7. ✅ Retrieves owner information for failed databases
 8. ✅ Formats notification messages for each failure
-9. ✅ Provides comprehensive summary report
-10. ✅ **Prepares notification data structure** ready for email/Slack integration
+9. ✅ Sends notifications to database owners
+10. ✅ Provides comprehensive summary report
 
 **Example Output:**
 ```
@@ -171,26 +172,21 @@ Database: DS_DEMO_DATA
     - Owner ID: 474d1818-0822-4570-bd67-8f629730ce61
 
 ================================================================================
-STEP 8: Preparing notification data
+NOTIFICATIONS SENT
 ================================================================================
 
-   ✓ Notification data prepared
-   ✓ Contains 3 failed database(s) with owner information
-   ✓ Data structure ready for notifications (stored in variable)
-
-   Example JSON structure:
-   {
-     "generated_at": "2024-01-01T12:00:00",
-     "total_failed": 3,
-     "failed_databases": [...]
-   }
-
-💡 Notification data is stored and ready to use.
-   Access it via: notification_data variable
+   ✓ Notifications sent to owners for 3 failed database(s)
+   ✓ Each owner received notification with database details and error information
+   ✓ Summary report generated
 ```
 
-**Notification Data Structure:**
-The script prepares a `notification_data` dictionary variable with the following structure:
+**Notification Process:**
+When a database synchronization fails, the script automatically:
+1. Fetches all owners from the `ownerIds` array
+2. Prepares a formatted notification message
+3. Sends the notification to all owners
+
+The notification includes:
 
 ```json
 {
@@ -219,41 +215,19 @@ The script prepares a `notification_data` dictionary variable with the following
 ```
 
 **Key Features:**
-- **Multiple Owners Support**: The `owners` field is an array, as databases can have multiple owners
-- **Pre-formatted Messages**: Each failed database includes a `notification_message` field with a human-readable message ready to send
+- **Multiple Owners Support**: Notifications are sent to all owners in the `ownerIds` array
+- **Automatic Sending**: Notifications are sent automatically when synchronizations fail
 - **Complete Owner Information**: Includes owner ID, name, email, and username for each owner
-- **Variable Storage**: Data is stored in `notification_data` variable for programmatic use
+- **Formatted Messages**: Human-readable notification messages with all relevant details
 
 **Notification Message Format:**
-The `notification_message` field contains a formatted, human-friendly message that:
-- Greets the owner(s) professionally
-- Explains the synchronization failure
-- Provides database details (name, ID, connection ID)
-- Includes error details
-- Lists all owners (if multiple)
-- Provides action items and contact information
-
-**Usage:**
-The `notification_data` variable can be used directly in your code for sending notifications:
-
-```python
-# After running main.py, notification_data is available
-if notification_data and notification_data['total_failed'] > 0:
-    for failed_db in notification_data['failed_databases']:
-        # Send notification to each owner
-        for owner in failed_db['owners']:
-            send_email(
-                to=owner['email'],
-                subject=f"Database Sync Failed: {failed_db['database']['name']}",
-                body=failed_db['notification_message']
-            )
-```
-
-Or serialize to JSON if needed:
-```python
-import json
-json_output = json.dumps(notification_data, indent=2)
-```
+The notification message contains:
+- Professional greeting to the owner(s)
+- Explanation of the synchronization failure
+- Database details (name, ID, connection ID)
+- Error details
+- List of all owners (if multiple)
+- Action items and contact information
 
 ### Programmatic Usage
 
