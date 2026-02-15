@@ -81,44 +81,13 @@ The connection-testing script (`scripts/refresh_governed_connections.py`) follow
 
 ```mermaid
 flowchart TD
-    subgraph Init["1. Initialization"]
-        A[Load configuration & env] --> B[Load governed_connections.yaml]
-        B --> C[Initialize Collibra client]
-        C --> D[Test OAuth connection]
-        D --> E{OAuth OK?}
-        E -->|No| F[Exit with error]
-        E -->|Yes| G[Create DatabaseConnectionManager]
-    end
-
-    subgraph Test["2. Connection testing (per governed edge)"]
-        G --> H[For each governed edge ID]
-        H --> I[POST Catalog refresh API]
-        I --> J[Get job ID from 202]
-        J --> K[Poll job status until COMPLETED or ERROR]
-        K --> L{Outcome?}
-        L -->|Success| M[Record succeeded]
-        L -->|Failure| N[Record failed]
-        M --> H
-        N --> H
-    end
-
-    subgraph Notify["3. Failure handling (if any failed edges)"]
-        H --> O{Any failed edges?}
-        O -->|No| P[Summary report]
-        O -->|Yes| Q[For each failed edge: list DB connections]
-        Q --> R[For each DB: get owners from Catalog API]
-        R --> S[Deduplicate owners by user ID]
-        S --> T[Notify each unique owner]
-        T --> U[Log: connection, database_id, user_id, email]
-        U --> P
-    end
-
-    subgraph Report["4. Summary report (always)"]
-        P --> Y[Succeeded / Failed counts]
-        Y --> AA[Failed edge connections]
-        AA --> AB[Failed DBs & owners: database_id, name, email, user_id]
-        AB --> AD["Notifications sent: connection, database_id, user_id, email"]
-    end
+    A[Load config and governed_connections.yaml] --> B[Init client and test OAuth]
+    B --> C[For each governed edge: POST refresh, get job ID, poll until done]
+    C --> D[Record success or failure per edge]
+    D --> E[For each failed edge: list DB connections]
+    E --> F[Get owners from Catalog API, deduplicate by user ID]
+    F --> G[Notify each unique owner with connection, database_id, user_id, email]
+    G --> H[Summary report: counts, failed edges, failed DBs and owners, notifications sent]
 ```
 
 **Key process steps:**
