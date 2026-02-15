@@ -81,13 +81,13 @@ The connection-testing script (`scripts/refresh_governed_connections.py`) follow
 
 ```mermaid
 flowchart TD
-    A[Load config and governed_connections.yaml] --> B[Init client and test OAuth]
-    B --> C[For each governed edge: POST refresh, get job ID, poll until done]
-    C --> D[Record success or failure per edge]
-    D --> E[For each failed edge: list DB connections]
-    E --> F[Get owners from Catalog API, deduplicate by user ID]
-    F --> G[Notify each unique owner with connection, database_id, user_id, email]
-    G --> H[Summary report: counts, failed edges, failed DBs and owners, notifications sent]
+    A[Load config and YAML] --> B[Init client, test OAuth]
+    B --> C[Refresh each edge, poll job status]
+    C --> D[Record success or failure]
+    D --> E[List DBs for failed edges]
+    E --> F[Get owners, dedupe by user ID]
+    F --> G[Notify owners]
+    G --> H[Summary report]
 ```
 
 **Key process steps:**
