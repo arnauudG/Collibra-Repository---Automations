@@ -117,7 +117,7 @@ flowchart TD
         P --> Y[Succeeded / Failed counts]
         Y --> AA[Failed edge connections]
         AA --> AB[Failed DBs & owners: database_id, name, email, user_id]
-        AB --> AD[Notifications sent: connection | database_id | user_id | email]
+        AB --> AD["Notifications sent: connection, database_id, user_id, email"]
     end
 ```
 
