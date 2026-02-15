@@ -6,11 +6,11 @@ when their database connection refresh fails (e.g. due to credential changes).
 """
 
 import logging
-from typing import Dict, Any, Optional
 from abc import ABC, abstractmethod
+from typing import Any, Optional
 
-from collibra_client.core.client import CollibraClient
 from collibra_client.catalog.connections import DatabaseConnection
+from collibra_client.core.client import CollibraClient
 from collibra_client.core.exceptions import CollibraAPIError
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class NotificationHandler(ABC):
         self,
         connection: DatabaseConnection,
         error_message: str,
-        owner_info: Optional[Dict[str, Any]] = None,
+        owner_info: Optional[dict[str, Any]] = None,
     ) -> bool:
         """
         Send a notification about a database connection failure.
@@ -66,7 +66,7 @@ class CollibraNotificationHandler(NotificationHandler):
         self,
         connection: DatabaseConnection,
         error_message: str,
-        owner_info: Optional[Dict[str, Any]] = None,
+        owner_info: Optional[dict[str, Any]] = None,
     ) -> bool:
         """
         Send notification via Collibra API.
@@ -126,7 +126,7 @@ class CollibraNotificationHandler(NotificationHandler):
         except CollibraAPIError as e:
             logger.error("Failed to send notification via Collibra: %s", e)
             return False
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error sending notification")
             return False
 
@@ -156,7 +156,7 @@ class EmailNotificationHandler(NotificationHandler):
         self,
         connection: DatabaseConnection,
         error_message: str,
-        owner_info: Optional[Dict[str, Any]] = None,
+        owner_info: Optional[dict[str, Any]] = None,
     ) -> bool:
         """
         Send email notification.
@@ -202,7 +202,7 @@ class ConsoleNotificationHandler(NotificationHandler):
         self,
         connection: DatabaseConnection,
         error_message: str,
-        owner_info: Optional[Dict[str, Any]] = None,
+        owner_info: Optional[dict[str, Any]] = None,
     ) -> bool:
         """
         Log notification (connection failure details and owner).

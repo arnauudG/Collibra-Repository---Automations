@@ -6,7 +6,8 @@ Collibra's REST API with automatic authentication handling.
 """
 
 import json
-from typing import Optional, Dict, Any, Union
+from typing import Any, Optional, Union
+
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -14,7 +15,6 @@ from urllib3.util.retry import Retry
 from collibra_client.core.auth import CollibraAuthenticator
 from collibra_client.core.exceptions import (
     CollibraAPIError,
-    CollibraAuthenticationError,
 )
 
 
@@ -101,7 +101,7 @@ class CollibraClient:
         self._session.mount("https://", adapter)
         self._session.mount("http://", adapter)
 
-    def _get_headers(self, additional_headers: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+    def _get_headers(self, additional_headers: Optional[dict[str, str]] = None) -> dict[str, str]:
         """
         Get request headers with authentication token.
 
@@ -133,10 +133,10 @@ class CollibraClient:
         self,
         method: str,
         endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        data: Optional[Union[Dict[str, Any], str]] = None,
-        json_data: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
+        params: Optional[dict[str, Any]] = None,
+        data: Optional[Union[dict[str, Any], str]] = None,
+        json_data: Optional[dict[str, Any]] = None,
+        headers: Optional[dict[str, str]] = None,
     ) -> requests.Response:
         """
         Make an authenticated HTTP request to the Collibra API.
@@ -213,17 +213,17 @@ class CollibraClient:
                 f"API request failed: {error_message}",
                 status_code=status_code,
                 response_body=response_body,
-            )
+            ) from e
 
         except requests.exceptions.RequestException as e:
-            raise CollibraAPIError(f"Network error: {e}")
+            raise CollibraAPIError(f"Network error: {e}") from e
 
     def get(
         self,
         endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+        params: Optional[dict[str, Any]] = None,
+        headers: Optional[dict[str, str]] = None,
+    ) -> dict[str, Any]:
         """
         Make a GET request to the Collibra API.
 
@@ -258,11 +258,11 @@ class CollibraClient:
     def post(
         self,
         endpoint: str,
-        json_data: Optional[Dict[str, Any]] = None,
-        data: Optional[Union[Dict[str, Any], str]] = None,
-        params: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+        json_data: Optional[dict[str, Any]] = None,
+        data: Optional[Union[dict[str, Any], str]] = None,
+        params: Optional[dict[str, Any]] = None,
+        headers: Optional[dict[str, str]] = None,
+    ) -> dict[str, Any]:
         """
         Make a POST request to the Collibra API.
 
@@ -304,11 +304,11 @@ class CollibraClient:
     def put(
         self,
         endpoint: str,
-        json_data: Optional[Dict[str, Any]] = None,
-        data: Optional[Union[Dict[str, Any], str]] = None,
-        params: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+        json_data: Optional[dict[str, Any]] = None,
+        data: Optional[Union[dict[str, Any], str]] = None,
+        params: Optional[dict[str, Any]] = None,
+        headers: Optional[dict[str, str]] = None,
+    ) -> dict[str, Any]:
         """
         Make a PUT request to the Collibra API.
 
@@ -350,9 +350,9 @@ class CollibraClient:
     def delete(
         self,
         endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+        params: Optional[dict[str, Any]] = None,
+        headers: Optional[dict[str, str]] = None,
+    ) -> dict[str, Any]:
         """
         Make a DELETE request to the Collibra API.
 
@@ -400,7 +400,7 @@ class CollibraClient:
         except CollibraAPIError:
             raise
 
-    def get_job_status(self, job_id: str) -> Dict[str, Any]:
+    def get_job_status(self, job_id: str) -> dict[str, Any]:
         """
         Get the status of a job by its ID.
 
@@ -431,7 +431,7 @@ class CollibraClient:
         endpoint = f"/rest/jobs/v1/jobs/{job_id}"
         return self.get(endpoint)
 
-    def get_user(self, user_id: str) -> Dict[str, Any]:
+    def get_user(self, user_id: str) -> dict[str, Any]:
         """
         Get user details by ID.
 

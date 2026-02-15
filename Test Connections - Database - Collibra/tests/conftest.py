@@ -2,9 +2,10 @@
 Pytest configuration and shared fixtures.
 """
 
-import pytest
-from typing import Generator
+from collections.abc import Generator
 from functools import wraps
+
+import pytest
 
 from collibra_client import (
     CollibraClient,
@@ -17,7 +18,7 @@ from collibra_client.core.exceptions import CollibraAuthenticationError
 def handle_rate_limit(func):
     """
     Decorator to handle rate limit errors in tests.
-    
+
     If a test raises CollibraAuthenticationError with a 429 status code,
     the test will be skipped instead of failing.
     """
@@ -67,7 +68,7 @@ def collibra_client(collibra_config: CollibraConfig) -> CollibraClient:
         Configured CollibraClient instance
     """
     import time
-    
+
     client = CollibraClient(
         base_url=collibra_config.base_url,
         client_id=collibra_config.client_id,

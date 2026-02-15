@@ -11,10 +11,10 @@ Requires environment variables:
 """
 
 import pytest
+
 from collibra_client import (
-    CollibraClient,
-    CollibraAuthenticationError,
     CollibraAPIError,
+    CollibraClient,
 )
 from tests.conftest import handle_rate_limit
 
@@ -54,7 +54,7 @@ class TestConnection:
         - Response parsing works
         """
         user_info = collibra_client.get("/rest/2.0/users/current")
-        
+
         assert user_info is not None
         assert isinstance(user_info, dict)
         # Verify common user fields exist
@@ -65,7 +65,7 @@ class TestConnection:
         """Test that authentication token is properly acquired."""
         # Force a token acquisition by making a request
         collibra_client.get("/rest/2.0/users/current")
-        
+
         # Check that token info is available
         token_info = collibra_client._authenticator.get_token_info()
         assert token_info is not None
@@ -83,13 +83,13 @@ class TestConnection:
         """
         # Get initial token
         initial_token = collibra_client._authenticator.get_access_token()
-        
+
         # Invalidate token
         collibra_client._authenticator.invalidate_token()
-        
+
         # Make a request - should automatically acquire new token
         collibra_client.get("/rest/2.0/users/current")
-        
+
         # Verify new token was acquired
         new_token = collibra_client._authenticator.get_access_token()
         assert new_token is not None
@@ -103,7 +103,7 @@ class TestConnection:
             "/rest/2.0/users",
             params={"limit": 5, "offset": 0}
         )
-        
+
         assert response is not None
         assert isinstance(response, dict)
         # Collibra API typically returns results in a 'results' field
@@ -115,7 +115,7 @@ class TestConnection:
         """Test error handling for invalid API endpoint."""
         with pytest.raises(CollibraAPIError) as exc_info:
             collibra_client.get("/rest/2.0/invalid-endpoint-that-does-not-exist")
-        
+
         # Verify error is raised and contains error message
         assert "404" in str(exc_info.value) or exc_info.value.status_code == 404
         # Status code may be None if error occurs before response, but error message should contain info
@@ -136,15 +136,15 @@ class TestAuthentication:
     def test_authenticator_token_management(self, collibra_client: CollibraClient):
         """Test token management in the authenticator."""
         authenticator = collibra_client._authenticator
-        
+
         # Get token
         token1 = authenticator.get_access_token()
         assert token1 is not None
-        
+
         # Get token again - should return cached token
         token2 = authenticator.get_access_token()
         assert token2 == token1
-        
+
         # Force refresh - may hit rate limit, decorator will handle it
         token3 = authenticator.get_access_token(force_refresh=True)
         assert token3 is not None
@@ -155,7 +155,7 @@ class TestAuthentication:
         """Test TokenInfo properties and expiration logic."""
         # Make a request to acquire token
         collibra_client.get("/rest/2.0/users/current")
-        
+
         token_info = collibra_client._authenticator.get_token_info()
         assert token_info is not None
         assert token_info.access_token is not None

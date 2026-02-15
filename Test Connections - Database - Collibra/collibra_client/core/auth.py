@@ -6,8 +6,9 @@ following the OAuth 2.0 client credentials flow.
 """
 
 import time
-from typing import Optional, Dict, Any
 from dataclasses import dataclass
+from typing import Optional
+
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -202,7 +203,7 @@ class CollibraAuthenticator:
 
         except requests.exceptions.HTTPError as e:
             status_code = e.response.status_code if e.response else None
-            
+
             # Handle rate limiting (429) specially
             if status_code == 429:
                 # If we have a cached token, try to use it even if slightly expired
@@ -224,15 +225,17 @@ class CollibraAuthenticator:
                     except ValueError:
                         error_message = e.response.text or error_message
 
-            raise CollibraAuthenticationError(error_message, status_code=status_code)
+            raise CollibraAuthenticationError(
+                error_message, status_code=status_code
+            ) from e
 
         except requests.exceptions.RequestException as e:
             raise CollibraAuthenticationError(
                 f"Network error during token acquisition: {e}"
-            )
+            ) from e
 
         except (KeyError, ValueError) as e:
-            raise CollibraTokenError(f"Invalid token response format: {e}")
+            raise CollibraTokenError(f"Invalid token response format: {e}") from e
 
     def invalidate_token(self) -> None:
         """

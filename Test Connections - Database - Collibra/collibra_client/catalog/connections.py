@@ -8,8 +8,9 @@ notifying owners of connection failures.
 
 import base64
 import json
-from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
+from typing import Any, Optional
+
 import requests
 
 from collibra_client.core.client import CollibraClient
@@ -34,7 +35,7 @@ class DatabaseConnection:
     database_id: Optional[str] = None
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "DatabaseConnection":
+    def from_dict(cls, data: dict[str, Any]) -> "DatabaseConnection":
         """
         Create a DatabaseConnection instance from API response data.
 
@@ -137,9 +138,9 @@ class DatabaseConnectionManager:
         self,
         method: str,
         endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        json_data: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        params: Optional[dict[str, Any]] = None,
+        json_data: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
         """
         Make an authenticated request to the Catalog Database API.
 
@@ -196,9 +197,11 @@ class DatabaseConnectionManager:
                 f"Database API request failed: {error_message}",
                 status_code=status_code,
                 response_body=response_body,
-            )
+            ) from e
         except requests.exceptions.RequestException as e:
-            raise CollibraAPIError(f"Network error during database API request: {e}")
+            raise CollibraAPIError(
+                f"Network error during database API request: {e}"
+            ) from e
 
     def list_database_connections(
         self,
@@ -206,7 +209,7 @@ class DatabaseConnectionManager:
         schema_connection_id: Optional[str] = None,
         limit: int = 0,
         offset: int = 0,
-    ) -> List[DatabaseConnection]:
+    ) -> list[DatabaseConnection]:
         """
         List all available database connections.
 
@@ -255,7 +258,7 @@ class DatabaseConnectionManager:
 
         return [DatabaseConnection.from_dict(conn_data) for conn_data in results]
 
-    def refresh_database_connections(self, edge_connection_id: str) -> Dict[str, Any]:
+    def refresh_database_connections(self, edge_connection_id: str) -> dict[str, Any]:
         """
         Refresh database connections in the catalog for a specific Edge connection.
 
@@ -304,7 +307,7 @@ class DatabaseConnectionManager:
                 return conn
         return None
 
-    def test_database_connection(self, connection_id: str) -> Dict[str, Any]:
+    def test_database_connection(self, connection_id: str) -> dict[str, Any]:
         """
         Test a database connection by attempting to refresh it.
 
@@ -361,7 +364,7 @@ class DatabaseConnectionManager:
                 "is_credential_error": is_credential_error,
             }
 
-    def synchronize_database_metadata(self, database_id: str) -> Dict[str, Any]:
+    def synchronize_database_metadata(self, database_id: str) -> dict[str, Any]:
         """
         Trigger a metadata sync job for a database asset (Catalog API).
 
@@ -386,7 +389,7 @@ class DatabaseConnectionManager:
         endpoint = f"{self.CATALOG_API_BASE}/databases/{database_id}/synchronizeMetadata"
         return self._make_basic_auth_request("POST", endpoint)
 
-    def get_database_asset(self, database_id: str) -> Dict[str, Any]:
+    def get_database_asset(self, database_id: str) -> dict[str, Any]:
         """
         Get database asset details by ID.
 

@@ -5,17 +5,17 @@ This module provides functionality to retrieve owner information
 for database connections from Collibra assets.
 """
 
-from typing import Dict, Any, Optional
+from typing import Any, Optional
 
-from collibra_client.core.client import CollibraClient
 from collibra_client.catalog.connections import DatabaseConnection
+from collibra_client.core.client import CollibraClient
 from collibra_client.core.exceptions import CollibraAPIError
 
 
 def get_connection_owner(
     client: CollibraClient,
     connection: DatabaseConnection,
-) -> Optional[Dict[str, Any]]:
+) -> Optional[dict[str, Any]]:
     """
     Get the owner information for a database connection.
 
@@ -49,19 +49,19 @@ def get_connection_owner(
         # Use Catalog Database API to get database asset
         # This API returns ownerIds (array) per API documentation
         from collibra_client.catalog import DatabaseConnectionManager
-        
+
         db_manager = DatabaseConnectionManager(client=client, use_oauth=True)
         db_asset = db_manager.get_database_asset(connection.database_id)
-        
+
         # Catalog Database API returns ownerIds as an array
         owner_ids = db_asset.get("ownerIds")
-        
+
         if not owner_ids or not isinstance(owner_ids, list) or len(owner_ids) == 0:
             return None
-        
+
         # Use the first owner from the array
         owner_id = owner_ids[0]
-        
+
         # Get user details
         try:
             user = client.get_user(owner_id)

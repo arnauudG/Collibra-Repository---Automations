@@ -12,8 +12,8 @@ from collibra_client.core.auth import CollibraAuthenticator
 from collibra_client.core.client import CollibraClient
 from collibra_client.core.config import CollibraConfig
 from collibra_client.core.exceptions import (
-    CollibraAuthenticationError,
     CollibraAPIError,
+    CollibraAuthenticationError,
     CollibraClientError,
     CollibraTokenError,
 )

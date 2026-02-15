@@ -36,19 +36,18 @@ For more information, see the README.md file or visit the project repository.
 """
 
 # Core functionality
-from collibra_client.core import (
-    CollibraClient,
-    CollibraAuthenticator,
-    CollibraConfig,
-    CollibraAuthenticationError,
-    CollibraAPIError,
-    CollibraClientError,
-)
-
 # Catalog/Database functionality
 from collibra_client.catalog import (
     DatabaseConnection,
     DatabaseConnectionManager,
+)
+from collibra_client.core import (
+    CollibraAPIError,
+    CollibraAuthenticationError,
+    CollibraAuthenticator,
+    CollibraClient,
+    CollibraClientError,
+    CollibraConfig,
 )
 
 # Governed connections config (YAML)
@@ -56,10 +55,10 @@ from collibra_client.governed_config import load_governed_config
 
 # Notifications functionality
 from collibra_client.notifications import (
-    NotificationHandler,
     CollibraNotificationHandler,
     ConsoleNotificationHandler,
     EmailNotificationHandler,
+    NotificationHandler,
     get_connection_owner,
 )
 

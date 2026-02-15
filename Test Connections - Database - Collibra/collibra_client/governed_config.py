@@ -8,7 +8,7 @@ COLLIBRA_GOVERNED_CONNECTIONS_CONFIG or defaults to governed_connections.yaml.
 
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional, Set, Tuple, Union
+from typing import Any, Optional, Union
 
 try:
     import yaml
@@ -18,7 +18,7 @@ except ImportError:
 
 def load_governed_config(
     path: Optional[Union[str, Path]] = None,
-) -> Tuple[Set[str], Dict[str, Dict[str, Any]]]:
+) -> tuple[set[str], dict[str, dict[str, Any]]]:
     """
     Load governed edge connection IDs and metadata from YAML.
 
@@ -68,6 +68,6 @@ def load_governed_config(
     if not governed or not isinstance(governed, dict):
         return set(), {}
 
-    edge_ids = set(str(k) for k in governed.keys())
+    edge_ids = {str(k) for k in governed.keys()}
     metadata = {str(k): v if isinstance(v, dict) else {} for k, v in governed.items()}
     return edge_ids, metadata

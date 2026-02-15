@@ -34,9 +34,9 @@ try:
     from collibra_client import (
         CollibraClient,
         CollibraConfig,
+        ConsoleNotificationHandler,
         DatabaseConnectionManager,
         load_governed_config,
-        ConsoleNotificationHandler,
     )
 except ImportError as e:
     logger.error("Error importing collibra_client: %s", e)

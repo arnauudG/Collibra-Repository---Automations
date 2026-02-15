@@ -6,10 +6,10 @@ when their database connection refresh fails (e.g. due to credential changes).
 """
 
 from collibra_client.notifications.handlers import (
-    NotificationHandler,
     CollibraNotificationHandler,
     ConsoleNotificationHandler,
     EmailNotificationHandler,
+    NotificationHandler,
 )
 from collibra_client.notifications.owner import get_connection_owner
 

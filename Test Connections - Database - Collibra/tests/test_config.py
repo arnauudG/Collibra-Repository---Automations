@@ -7,6 +7,7 @@ configuration logic, but all integration tests use actual credentials.
 """
 
 import pytest
+
 from collibra_client import CollibraConfig
 
 
@@ -18,9 +19,9 @@ class TestCollibraConfig:
         monkeypatch.setenv("COLLIBRA_BASE_URL", "https://test.collibra.com")
         monkeypatch.setenv("COLLIBRA_CLIENT_ID", "test_client_id")
         monkeypatch.setenv("COLLIBRA_CLIENT_SECRET", "test_client_secret")
-        
+
         config = CollibraConfig.from_env()
-        
+
         assert config.base_url == "https://test.collibra.com"
         assert config.client_id == "test_client_id"
         assert config.client_secret == "test_client_secret"
@@ -31,9 +32,9 @@ class TestCollibraConfig:
         monkeypatch.setenv("COLLIBRA_BASE_URL", "https://test.collibra.com")
         monkeypatch.setenv("COLLIBRA_CLIENT_ID", "test_client_id")
         monkeypatch.setenv("COLLIBRA_CLIENT_SECRET", "test_client_secret")
-        
+
         config = CollibraConfig.from_env(timeout=60)
-        
+
         assert config.timeout == 60
 
     def test_config_direct_initialization(self):
@@ -44,7 +45,7 @@ class TestCollibraConfig:
             client_secret="test_client_secret",
             timeout=45,
         )
-        
+
         assert config.base_url == "https://test.collibra.com"
         assert config.client_id == "test_client_id"
         assert config.client_secret == "test_client_secret"
@@ -55,7 +56,7 @@ class TestCollibraConfig:
         monkeypatch.delenv("COLLIBRA_BASE_URL", raising=False)
         monkeypatch.setenv("COLLIBRA_CLIENT_ID", "test_client_id")
         monkeypatch.setenv("COLLIBRA_CLIENT_SECRET", "test_client_secret")
-        
+
         with pytest.raises(ValueError, match="base URL"):
             CollibraConfig.from_env()
 
@@ -64,7 +65,7 @@ class TestCollibraConfig:
         monkeypatch.setenv("COLLIBRA_BASE_URL", "https://test.collibra.com")
         monkeypatch.delenv("COLLIBRA_CLIENT_ID", raising=False)
         monkeypatch.setenv("COLLIBRA_CLIENT_SECRET", "test_client_secret")
-        
+
         with pytest.raises(ValueError, match="client ID"):
             CollibraConfig.from_env()
 
@@ -73,7 +74,7 @@ class TestCollibraConfig:
         monkeypatch.setenv("COLLIBRA_BASE_URL", "https://test.collibra.com")
         monkeypatch.setenv("COLLIBRA_CLIENT_ID", "test_client_id")
         monkeypatch.delenv("COLLIBRA_CLIENT_SECRET", raising=False)
-        
+
         with pytest.raises(ValueError, match="client secret"):
             CollibraConfig.from_env()
 
@@ -82,13 +83,13 @@ class TestCollibraConfig:
         monkeypatch.setenv("COLLIBRA_BASE_URL", "https://env.collibra.com")
         monkeypatch.setenv("COLLIBRA_CLIENT_ID", "env_client_id")
         monkeypatch.setenv("COLLIBRA_CLIENT_SECRET", "env_secret")
-        
+
         config = CollibraConfig(
             base_url="https://param.collibra.com",
             client_id="param_client_id",
             client_secret="param_secret",
         )
-        
+
         assert config.base_url == "https://param.collibra.com"
         assert config.client_id == "param_client_id"
         assert config.client_secret == "param_secret"

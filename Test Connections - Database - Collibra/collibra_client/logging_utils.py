@@ -5,7 +5,6 @@ Logging utilities: colored console output when running in a TTY.
 import logging
 import sys
 
-
 # ANSI codes (safe to use; reset is always appended)
 _RESET = "\033[0m"
 _LEVEL_COLORS = {
