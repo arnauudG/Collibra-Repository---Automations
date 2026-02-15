@@ -1,8 +1,50 @@
 # Data Source Connection Validation for Collibra
 
-An automated tool for **governing and testing data source connections** and **reducing integration and lineage break risk** in Collibra. We are not talking about “database connections” only: we mean **data source connections** in the broad sense—databases, data warehouses, APIs, filesystems, SaaS sources, and anything Collibra relies on to interact with data systems. The tool governs a defined subset of edge connections (maintained in a version-controlled YAML file), tests those connections, and when failures occur notifies **owners**—the downstream users Collibra holds responsible for those assets (via Owner/Steward responsibilities and the Catalog’s `ownerIds`)—so broken integrations are caught and actionable.
+An automated tool for **governing and testing data source connections** in Collibra, so connectivity is verified and failures are caught early—with clear ownership and notifications.
+
+**In a nutshell:** You define which connections matter (in a YAML file), the tool tests them on a schedule or on demand, and if something breaks, the right people (Collibra owners) are notified. No metadata sync—just validation and accountability.
+
+**Documentation at a glance**
+
+| If you want to… | Go to… |
+|-----------------|--------|
+| Understand intent and where this fits (Collibra + organization) | [Intent of this project](#intent-of-this-project) · [Position in Collibra and in your organization](#position-in-collibra-and-in-your-organization) |
+| Get started (install, configure, run) | [Installation](#installation) · [Configuration](#configuration) · [Usage](#usage) |
+| Define which connections to test | [Governed Connections (YAML)](#governed-connections-yaml) |
+| See how the main script works | [Business Process Flow](#business-process-flow) |
+| Explain value to stakeholders (O²-R-C-D, operating model) | [Context & Value (Operating Model)](#context--value-operating-model) |
+
+---
+
+## Intent of this project
+
+**What we mean by “data source connections”**  
+We’re not only talking about databases. We mean any **data source** Collibra uses to interact with your data: databases, data warehouses, APIs, filesystems, SaaS sources, and the like. The tool validates that these connections actually work, so governance and lineage don’t rely on assumptions.
+
+**What this tool does**  
+It lets you declare a **governed subset** of edge connections (in a version-controlled YAML file), triggers a refresh/test for each one, waits for the result, and—when a connection fails—identifies the affected data sources and notifies their **owners** (the people Collibra already assigns via Owner/Steward and the Catalog `ownerIds`). So broken connections are detected early and ownership is clear.
+
+**Why it exists**  
+Collibra doesn’t ship a built-in way to say “only these connections are in scope” or to systematically verify them. This automation fills that gap: you get explicit scope, programmatic validation, and alignment with Collibra’s accountability model.
+
+---
+
+## Position in Collibra and in your organization
+
+**Inside Collibra**  
+The tool uses Collibra’s Catalog APIs (edge connections, refresh, job status, database assets, `ownerIds`). It does **not** replace Collibra—it adds an **operational integrity layer**: connections you choose to govern are tested, and failures are surfaced and routed to the right owners. It sits alongside Collibra as a control that keeps governance metadata in line with reality.
+
+**In your organization**  
+It fits teams that treat Collibra as a governance control plane and that own specific data sources (by domain or platform). It reinforces existing responsibility boundaries: the same people who own assets in Collibra are the ones notified when their connections fail. So the automation supports your operating model instead of introducing a new layer of governance.
+
+For a deeper view (problem statement, O²-R-C-D alignment, value summary), see [Context & Value (Operating Model)](#context--value-operating-model) below.
+
+---
 
 ## Overview
+
+**Who this is for**  
+Data governance teams, platform owners, or Collibra admins who want to (1) limit connection testing to a defined set of edges, (2) verify that those connections work, and (3) ensure failures are owned and actionable—without touching connections outside that set.
 
 Collibra does not provide a built-in way to govern which connections are in scope. This tool fills that gap by letting you declare and maintain a **governed subset** of edge connection IDs, then:
 
@@ -105,7 +147,7 @@ Collibra enforces accountability through **responsibilities** on assets (e.g. Ow
 
 ## Context & Value (Operating Model)
 
-This section positions the automation in governance and operating-model terms: what problem it addresses, why it matters, and how it fits the O²-R-C-D framework (Organization, Ownership, Risk, Control, Decision).
+This section is for readers who want the **full picture**: the problem this automation addresses, why it matters for governance at scale, and how it fits the O²-R-C-D framework (Organization, Ownership, Risk, Control, Decision). Use it to explain the project to stakeholders or to align it with your operating model.
 
 ### 1. Context & Problem (WHAT)
 
@@ -187,11 +229,11 @@ Using **data source connections** (databases, warehouses, APIs, filesystems, Saa
 
 ## Installation
 
-This project uses [`uv`](https://github.com/astral-sh/uv) for fast Python package management.
+**Requirements:** Python 3.9+ and [`uv`](https://github.com/astral-sh/uv) (or pip). The project uses `uv` for fast, reproducible installs.
 
 ### Prerequisites
 
-Install `uv` (if not already installed):
+Install `uv` if you don’t have it yet:
 ```bash
 # macOS/Linux
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -216,6 +258,8 @@ uv sync --extra dev
 > **Note**: Dependencies are managed in `pyproject.toml`. If you need a `requirements.txt` file for compatibility, you can generate it with: `uv pip compile pyproject.toml -o requirements.txt`
 
 ## Configuration
+
+**First time?** Copy `.env.example` to `.env`, add your Collibra credentials, then create or edit `governed_connections.yaml` with the edge connection IDs you want to test. Details below.
 
 1. Copy `.env.example` to `.env`:
    ```bash
@@ -245,11 +289,15 @@ uv sync --extra dev
 4. **Optional: script logging**  
    Scripts use the `logging` module with colored console output when run in a TTY (INFO=green, WARNING=yellow, ERROR=red). To also write logs to a file, set `COLLIBRA_LOG_FILE` to a path (e.g. `export COLLIBRA_LOG_FILE=./collibra.log`). The file receives plain text (no ANSI codes).
 
+Once the above is done, you’re ready to run the [connection-testing script](#connection-testing-main-script) or the [quick OAuth test](#quick-oauth-connection-test) to confirm everything works.
+
 ## Usage
 
-### Connection testing (refresh only, wait for completion)
+### Connection testing (main script)
 
-To **test database connections** for your governed set (govern connections only—ensure they do not break):
+**Recommended first run:** Test that your environment and OAuth work, then run the main validation script.
+
+To **test data source connections** for your governed set (refresh each edge, wait for completion, notify owners on failure):
 
 ```bash
 python3 scripts/refresh_governed_connections.py
@@ -263,9 +311,9 @@ This script:
 
 We only govern and test connections; no metadata sync. Logging is colored when run in a TTY; set `COLLIBRA_LOG_FILE` to also write logs to a file.
 
-### List governed database connections
+### List governed data source connections
 
-To refresh then list database connections for your governed set (with optional filter by governed edge IDs):
+When you want to **see** which connections exist for your governed set (after refresh), run:
 
 ```bash
 python3 scripts/test_database_connections_simple.py
