@@ -123,17 +123,17 @@ The connection-testing script (`scripts/refresh_governed_connections.py`) follow
 
 ```mermaid
 flowchart TD
-    A[Define governed scope<br/>(versioned YAML)]
-    B[Load configuration<br/>and initialize Collibra client]
+    A[Define governed scope in YAML]
+    B[Load config and init client]
     C[Authenticate via OAuth]
     D[Refresh governed edge connections]
-    E[Poll refresh job status<br/>(COMPLETED / ERROR)]
+    E[Poll job status until done]
     F[Record success or failure]
-    G[List databases linked<br/>to failed edges]
-    H[Retrieve owners from Catalog<br/>(ownerIds)]
-    I[Deduplicate owners<br/>by user ID]
+    G[List DBs for failed edges]
+    H[Get owners from Catalog]
+    I[Deduplicate owners by user ID]
     J[Notify accountable owners]
-    K[Generate auditable summary report]
+    K[Summary report]
 
     A --> B
     B --> C
