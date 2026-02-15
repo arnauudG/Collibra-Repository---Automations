@@ -123,13 +123,28 @@ The connection-testing script (`scripts/refresh_governed_connections.py`) follow
 
 ```mermaid
 flowchart TD
-    A[Load config and YAML] --> B[Init client, test OAuth]
-    B --> C[Refresh each edge, poll job status]
-    C --> D[Record success or failure]
-    D --> E[List DBs for failed edges]
-    E --> F[Get owners, dedupe by user ID]
-    F --> G[Notify owners]
-    G --> H[Summary report]
+    A[Define governed scope<br/>(versioned YAML)]
+    B[Load configuration<br/>and initialize Collibra client]
+    C[Authenticate via OAuth]
+    D[Refresh governed edge connections]
+    E[Poll refresh job status<br/>(COMPLETED / ERROR)]
+    F[Record success or failure]
+    G[List databases linked<br/>to failed edges]
+    H[Retrieve owners from Catalog<br/>(ownerIds)]
+    I[Deduplicate owners<br/>by user ID]
+    J[Notify accountable owners]
+    K[Generate auditable summary report]
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+    G --> H
+    H --> I
+    I --> J
+    J --> K
 ```
 
 **Key process steps:**
