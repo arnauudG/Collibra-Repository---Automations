@@ -39,14 +39,9 @@ run_script() {
     echo ""
 }
 
-# Run scripts in order
+# Run scripts in order (connection governing only; no metadata sync)
 run_script "test_connection_simple.py" "Quick OAuth connection test"
-run_script "test_fetch_users.py" "Fetch users from Collibra API"
-run_script "test_database_connections_simple.py" "List database connections"
-run_script "test_synchronize_database.py" "Synchronize database metadata"
-
-echo -e "${YELLOW}Note: test_database_connections.py is a comprehensive script that may take longer${NC}"
-echo -e "${YELLOW}Note: test_job_status.py requires a job_id argument - skipping${NC}"
+run_script "test_database_connections_simple.py" "List database connections (governed set)"
 echo ""
 echo "============================================================"
 echo "All scripts completed!"

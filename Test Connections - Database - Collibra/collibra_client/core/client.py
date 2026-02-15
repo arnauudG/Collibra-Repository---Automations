@@ -405,7 +405,7 @@ class CollibraClient:
         Get the status of a job by its ID.
 
         This method retrieves the current status of an asynchronous job
-        that was started by another API call (e.g., database synchronization).
+        that was started by another API call (e.g., connection refresh).
 
         Args:
             job_id: UUID of the job to check.

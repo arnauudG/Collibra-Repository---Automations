@@ -5,8 +5,9 @@ This script tests the OAuth connection to Collibra without requiring
 database connection testing. Useful for quick validation.
 """
 
-import sys
+import logging
 import os
+import sys
 from pathlib import Path
 
 # Add project root to path for imports
@@ -14,96 +15,102 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 try:
+    from collibra_client.logging_utils import setup_script_logging
+    setup_script_logging(
+        log_format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+except ImportError:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    if os.environ.get("COLLIBRA_LOG_FILE"):
+        h = logging.FileHandler(os.environ["COLLIBRA_LOG_FILE"], encoding="utf-8")
+        h.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"))
+        logging.getLogger().addHandler(h)
+logger = logging.getLogger(__name__)
+
+try:
     from collibra_client import CollibraClient, CollibraConfig
 except ImportError as e:
-    print(f"Error importing collibra_client: {e}")
-    print("\nMake sure dependencies are installed:")
-    print("  pip install requests python-dotenv")
-    print("  or")
-    print("  uv sync")
+    logger.error("Error importing collibra_client: %s", e)
+    logger.info(
+        "Make sure dependencies are installed: pip install requests python-dotenv or uv sync"
+    )
     sys.exit(1)
 
 
 def test_oauth_connection():
     """Test OAuth connection to Collibra."""
-    print("=" * 60)
-    print("COLLIBRA OAUTH CONNECTION TEST")
-    print("=" * 60)
-    print()
+    logger.info("=" * 60)
+    logger.info("COLLIBRA OAUTH CONNECTION TEST")
+    logger.info("=" * 60)
 
     try:
-        # Load configuration
-        print("Loading configuration from environment variables...")
+        logger.info("Loading configuration from environment variables...")
         config = CollibraConfig.from_env()
-        print(f"✓ Base URL: {config.base_url}")
-        print(f"✓ Client ID: {config.client_id[:10]}..." if config.client_id else "✗ Client ID: Not set")
-        print()
+        logger.info("Base URL: %s", config.base_url)
+        logger.info(
+            "Client ID: %s",
+            f"{config.client_id[:10]}..." if config.client_id else "Not set",
+        )
 
-        # Create client
-        print("Creating Collibra client...")
+        logger.info("Creating Collibra client...")
         client = CollibraClient(
             base_url=config.base_url,
             client_id=config.client_id,
             client_secret=config.client_secret,
             timeout=config.timeout,
         )
-        print("✓ Client created")
-        print()
+        logger.info("Client created")
 
-        # Test connection
-        print("Testing OAuth connection...")
+        logger.info("Testing OAuth connection...")
         if client.test_connection():
-            print("✓ Connection successful!")
-            print()
+            logger.info("Connection successful")
 
-            # Try to get current user
-            print("Fetching current user information...")
+            logger.info("Fetching current user information...")
             try:
                 current_user = client.get("/rest/2.0/users/current")
-                # Try multiple fields for username/name
                 username = (
-                    current_user.get("username") or
-                    current_user.get("name") or
-                    current_user.get("fullName") or
-                    current_user.get("emailAddress") or
-                    "Unknown"
+                    current_user.get("username")
+                    or current_user.get("name")
+                    or current_user.get("fullName")
+                    or current_user.get("emailAddress")
+                    or "Unknown"
                 )
                 user_id = current_user.get("id", "N/A")
                 email = current_user.get("emailAddress", "N/A")
-                
-                print(f"✓ Current user: {username}")
-                print(f"✓ User ID: {user_id}")
+                logger.info("Current user: %s", username)
+                logger.info("User ID: %s", user_id)
                 if email != "N/A":
-                    print(f"✓ Email: {email}")
-                
-                # Show available fields for debugging
+                    logger.info("Email: %s", email)
                 if username == "Unknown":
-                    print(f"\n⚠ Note: Username not found. Available fields: {list(current_user.keys())[:5]}")
+                    logger.warning(
+                        "Username not found. Available fields: %s",
+                        list(current_user.keys())[:5],
+                    )
             except Exception as e:
-                print(f"⚠ Could not fetch user info: {e}")
+                logger.warning("Could not fetch user info: %s", e)
 
-            print()
-            print("=" * 60)
-            print("✓ ALL TESTS PASSED")
-            print("=" * 60)
+            logger.info("=" * 60)
+            logger.info("ALL TESTS PASSED")
+            logger.info("=" * 60)
             return True
         else:
-            print("✗ Connection failed")
+            logger.error("Connection failed")
             return False
 
     except ValueError as e:
-        print(f"\n✗ Configuration error: {e}")
-        print("\nPlease ensure the following environment variables are set:")
-        print("  - COLLIBRA_BASE_URL")
-        print("  - COLLIBRA_CLIENT_ID")
-        print("  - COLLIBRA_CLIENT_SECRET")
-        print("\nOr create a .env file with these values.")
+        logger.error("Configuration error: %s", e)
+        logger.info(
+            "Ensure COLLIBRA_BASE_URL, COLLIBRA_CLIENT_ID, COLLIBRA_CLIENT_SECRET are set, or use .env."
+        )
         return False
 
     except Exception as e:
-        print(f"\n✗ Error: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.exception("Error: %s", e)
         return False
 
 

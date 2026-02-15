@@ -1,7 +1,7 @@
 """
 Integration tests for database connection management.
 
-These tests verify database connection listing, synchronization,
+These tests verify database connection listing, refresh, and
 and owner information retrieval.
 
 Requires environment variables:
@@ -141,7 +141,7 @@ class TestDatabaseConnections:
         db_manager: DatabaseConnectionManager,
         collibra_client: CollibraClient,
     ):
-        """Test synchronizing database metadata."""
+        """Test the optional metadata sync API (not used by governing workflow)."""
         # Get a connection with database asset ID
         connections = db_manager.list_database_connections()
         connections_with_asset = [
@@ -153,7 +153,7 @@ class TestDatabaseConnections:
         
         db_id = connections_with_asset[0].database_id
         
-        # Start synchronization
+        # Call metadata sync endpoint (Catalog API)
         sync_result = db_manager.synchronize_database_metadata(db_id)
         assert sync_result is not None
         

@@ -1,17 +1,17 @@
-# Collibra Database Metadata Synchronization & Monitoring Tool
+# Collibra Database Connection Testing & Governance Tool
 
-An automated tool for testing, synchronizing, and monitoring database metadata synchronization jobs in Collibra. This tool identifies failed database synchronizations, retrieves database owner information, and sends notifications to owners about synchronization failures.
+An automated tool for **governing and testing database connections** and **reducing integration and lineage break risk** in Collibra. It governs a defined subset of edge connections (maintained in a version-controlled YAML file), tests those connections, and when failures occur notifies **database owners**—the downstream users who own the affected databases—so broken integrations are caught and actionable. This aligns with Collibra’s accountability model: the tool notifies the same people Collibra holds responsible for those assets (via Owner/Steward responsibilities and the Catalog’s `ownerIds`).
 
 ## Overview
 
-This tool automates the complete workflow of database metadata synchronization in Collibra:
+Collibra does not provide a built-in way to govern which connections are in scope. This tool fills that gap by letting you declare and maintain a **governed subset** of edge connection IDs, then:
 
-- **Automated Synchronization**: Triggers metadata synchronization jobs for all cataloged database connections
-- **Job Monitoring**: Tracks synchronization job status until completion or failure
-- **Failure Detection**: Identifies databases with failed synchronizations
+- **Governed Scope**: Operates only on connections defined in a YAML file (edge connection IDs + metadata per connection). Version-control the file to track scope and context over time.
+- **Connection Testing**: Refreshes and tests only the governed edge connections; identifies broken integrations and failed connection/lineage jobs.
+- **Failure Detection**: Detects databases with failed connection refresh or connection issues
 - **Owner Identification**: Retrieves database owner information from Collibra's Catalog Database API
-- **Notification Sending**: Formats human-readable notification messages and sends them to database owners for failed synchronizations
-- **Comprehensive Reporting**: Provides detailed summary reports with owner information for failed databases
+- **Notification**: Notifies database owners when connection tests fail—the same owners Collibra uses for accountability (Catalog `ownerIds`, Owner/Steward responsibilities)—so issues are owned and actionable
+- **Reporting**: Summary reports with failed databases, their owners (name, email, **user ID**), and **database ID**; notifications sent list includes connection, **database_id**, **user_id**, and email (owners are deduplicated by user ID so each person is notified once per failed connection)
 
 **Built on a clean, production-ready Python client** for Collibra's REST API with:
 - **Clean Architecture**: Separation of concerns with modular design
@@ -22,14 +22,15 @@ This tool automates the complete workflow of database metadata synchronization i
 ## Key Features
 
 ### Core Functionality
-- ✅ **Automated Database Synchronization**: Triggers metadata synchronization for all cataloged database connections
-- ✅ **Job Status Monitoring**: Tracks synchronization jobs until completion, failure, or timeout
-- ✅ **Failure Detection**: Identifies databases with failed synchronizations and captures error details
+- ✅ **Governed Subset**: Only tests and monitors connections defined in a YAML file (metadata per edge connection ID). No built-in connection governance in the platform—this file is your single source of truth.
+- ✅ **Connection Testing**: Refreshes only governed edge connections; filters database list to those linked to governed edge IDs—reducing risk of touching ungoverned or unowned connections.
+- ✅ **Integration & Lineage Risk Reduction**: Catches broken integrations and failed connection/lineage jobs early; notifies owners so issues are owned and fixable.
+- ✅ **Job Status Monitoring**: Tracks refresh job status until completion, failure, or timeout
+- ✅ **Failure Detection**: Identifies databases with failed connection refresh and captures error details
 - ✅ **Owner Information Retrieval**: Fetches database owners from Catalog Database API (`ownerIds` array)
 - ✅ **Multiple Owners Support**: Handles databases with multiple owners gracefully
-- ✅ **Notification Preparation**: Formats human-readable notification messages for failed databases
-- ✅ **Notification Sending**: Sends notifications to database owners when synchronizations fail
-- ✅ **Comprehensive Reporting**: Provides detailed summary reports with owner information
+- ✅ **Notification**: Notifies database owners when connection tests fail (same accountability as Collibra: `ownerIds`, Owner/Steward responsibilities); owners deduplicated by user ID (one notification per person per failed database)
+- ✅ **Reporting**: Summary report includes succeeded/failed counts, failed databases with **database ID** and owners (name, email, **user ID**), and notifications sent (connection | **database_id** | **user_id** | email)
 
 ### Technical Features
 - ✅ **OAuth 2.0 Authentication**: Client credentials flow with automatic token management
@@ -41,44 +42,97 @@ This tool automates the complete workflow of database metadata synchronization i
 - ✅ **Configuration Management**: Support for environment variables and direct initialization
 - ✅ **Test Suite**: Comprehensive pytest test suite with integration and unit tests
 - ✅ **Pre-commit Hooks**: Automated code quality checks (linting, formatting, type checking)
+- ✅ **Script logging**: Colored console output when run in a TTY (INFO=green, WARNING=yellow, ERROR=red); optional file logging via `COLLIBRA_LOG_FILE`
+
+## Governed Connections (YAML)
+
+The tool does **not** operate on all connections in Collibra. It only tests and monitors a **governed subset** that you define in a YAML file. This gives you:
+
+- **Explicit scope**: A clear, auditable list of connections you own and monitor.
+- **Metadata per edge**: Name, description, environment, owner team, etc., version-controlled alongside the IDs.
+- **Reduced integration risk**: Refresh and automation run only on connections you’ve committed to governing; ungoverned connections are left out of scope.
+
+**Example `governed_connections.yaml`:**
+
+```yaml
+# Governed Edge Connections – version-controlled; used for connection testing and filtering
+
+governed_connections:
+  "f919489f-2942-418c-a282-4473a1d7492a":
+    name: "Production Snowflake"
+    description: "Primary Snowflake warehouse for analytics"
+    environment: production
+    owner_team: "Analytics"
+
+  "a1b2c3d4-5678-90ab-cdef-1234567890ab":
+    name: "Staging PostgreSQL"
+    description: "Staging DB for integration tests"
+    environment: staging
+    owner_team: "Platform"
+```
+
+The set of governed edge connection IDs is derived from the keys of `governed_connections`. Only those edge connections are refreshed; only databases linked to those edge IDs are tested and monitored. The **connection-testing** script calls the refresh API for each governed edge and **waits for each refresh job to complete** (polls job status until COMPLETED or ERROR) before reporting success or failure. You can extend or change metadata over time and track it in git.
+
+**Why govern a subset?** Without a built-in way to govern connections in the platform, running against “all” connections risks broken integrations, unowned failures, and unclear scope for audits. Defining a governed subset (and version-controlling it) gives you explicit scope, ownership, and a clear story for compliance while reducing integration and lineage break risk.
 
 ## Business Process Flow
 
-The main orchestrator script (`main.py`) follows this complete workflow:
+The connection-testing script (`scripts/refresh_governed_connections.py`) follows this workflow:
 
 ```mermaid
 flowchart TD
-    A[Start: Load Configuration] --> B[Initialize Collibra Client]
-    B --> C[Test OAuth Connection]
-    C --> D{Connection<br/>Successful?}
-    D -->|No| E[Exit with Error]
-    D -->|Yes| F[Create Database Connection Manager]
-    F --> G[Fetch All Database Connections]
-    G --> H[Filter: Edge ID + Database ID]
-    H --> I{Connections<br/>Found?}
-    I -->|No| J[Exit: No Connections]
-    I -->|Yes| K[Loop: For Each Database Connection]
-    
-    K --> L[Sync Metadata]
-    L --> M[Monitor Job Status]
-    M --> N{Job<br/>Status?}
-    N -->|Completed| O[Exit: Connection Complete]
-    N -->|Failed/Error| P[Fetch Owners from ownerIds Array]
-    P --> Q[Prepare Notification Message]
-    Q --> R[Send Notification to Owners]
+    subgraph Init["1. Initialization"]
+        A[Load configuration & env] --> B[Load governed_connections.yaml]
+        B --> C[Initialize Collibra client]
+        C --> D[Test OAuth connection]
+        D --> E{OAuth OK?}
+        E -->|No| F[Exit with error]
+        E -->|Yes| G[Create DatabaseConnectionManager]
+    end
+
+    subgraph Test["2. Connection testing (per governed edge)"]
+        G --> H[For each governed edge ID]
+        H --> I[POST Catalog refresh API]
+        I --> J[Get job ID from 202]
+        J --> K[Poll job status until COMPLETED or ERROR]
+        K --> L{Outcome?}
+        L -->|Success| M[Record succeeded]
+        L -->|Failure| N[Record failed]
+        M --> H
+        N --> H
+    end
+
+    subgraph Notify["3. Failure handling (if any failed edges)"]
+        H --> O{Any failed edges?}
+        O -->|No| P[Summary report]
+        O -->|Yes| Q[For each failed edge: list DB connections]
+        Q --> R[For each DB: get owners from Catalog API]
+        R --> S[Deduplicate owners by user ID]
+        S --> T[Notify each unique owner]
+        T --> U[Log: connection, database_id, user_id, email]
+        U --> P
+    end
+
+    subgraph Report["4. Summary report (always)"]
+        P --> Y[Succeeded / Failed counts]
+        Y --> AA[Failed edge connections]
+        AA --> AB[Failed DBs & owners: database_id, name, email, user_id]
+        AB --> AD[Notifications sent: connection | database_id | user_id | email]
+    end
 ```
 
-**Key Process Steps (per database connection):**
-1. **Authentication**: OAuth connection test and validation
-2. **Connection Discovery**: Fetch and filter cataloged database connections
-3. **For Each Database Connection**:
-   - **Synchronization**: Trigger metadata synchronization job
-   - **Monitoring**: Track job status until completion or failure
-   - **If Failed**: Fetch all owners from `ownerIds` array (supports multiple owners)
-   - **If Failed**: Prepare notification message for the failed database
-   - **If Failed**: Send notification to owners
+**Key process steps:**
+1. **Load governed scope**: Read edge connection IDs (and optional metadata) from `governed_connections.yaml`.
+2. **Authentication**: OAuth connection test and validation.
+3. **For each governed edge**: Call Catalog refresh API (202), extract job ID, poll job status until COMPLETED or ERROR, record success or failure.
+4. **For each failed edge**: List database connections under that edge; for each connection with a `database_id`, get owners from Catalog API (`ownerIds`), **deduplicate by user ID** (so the same person is notified once even if listed as Owner and Steward), then **notify** each unique owner (notification includes connection name, database ID, user ID, email).
+5. **Summary report**: Succeeded/failed counts; failed edge connections; **failed databases and their owners** (connection name, database ID, edge name, error, owner name, email, **user ID**); **notifications sent** (connection | database_id | user_id | email).
 
-**Note on "No Job ID" case:** If the synchronization API doesn't return a job ID, the process skips monitoring for that database. This can occur if the sync completes immediately or if the API response format is unexpected. The database is tracked separately (not marked as failed) since its status cannot be determined.
+We only govern and test connections (refresh + wait for job); no metadata sync. The end goal is to notify owners of failures and have a clear, auditable summary report including database and user identifiers.
+
+### Collibra accountability
+
+Collibra enforces accountability through **responsibilities** on assets (e.g. Owner, Steward). This tool uses that same model: it notifies the **database owners** returned by the Catalog API (`ownerIds`), so the people who are notified are exactly those Collibra considers responsible for the affected databases. Governance and accountability stay aligned.
 
 ## Installation
 
@@ -134,100 +188,39 @@ uv sync --extra dev
    - `COLLIBRA_BASIC_AUTH_USERNAME` - Username for Basic Auth
    - `COLLIBRA_BASIC_AUTH_PASSWORD` - Password for Basic Auth
 
+3. **Governed connections (YAML)**  
+   Create or edit `governed_connections.yaml` (or set `COLLIBRA_GOVERNED_CONNECTIONS_CONFIG` to another path). This file defines which edge connection IDs are in scope for testing and monitoring. See [Governed Connections (YAML)](#governed-connections-yaml) above for format and example.
+
+4. **Optional: script logging**  
+   Scripts use the `logging` module with colored console output when run in a TTY (INFO=green, WARNING=yellow, ERROR=red). To also write logs to a file, set `COLLIBRA_LOG_FILE` to a path (e.g. `export COLLIBRA_LOG_FILE=./collibra.log`). The file receives plain text (no ANSI codes).
+
 ## Usage
 
-### Quick Start - Automated Database Synchronization & Monitoring
+### Connection testing (refresh only, wait for completion)
 
-Run the complete automated workflow to synchronize all database metadata and identify failures:
+To **test database connections** for your governed set (govern connections only—ensure they do not break):
 
 ```bash
-python3 main.py
+python3 scripts/refresh_governed_connections.py
 ```
 
-**What this does:**
-1. ✅ Loads configuration from `.env`
-2. ✅ Tests OAuth connection to Collibra
-3. ✅ Fetches all cataloged database connections
-4. ✅ Triggers metadata synchronization for each database
-5. ✅ Monitors job status until completion or failure
-6. ✅ Identifies failed synchronizations
-7. ✅ Retrieves owner information for failed databases
-8. ✅ Formats notification messages for each failure
-9. ✅ Sends notifications to database owners
-10. ✅ Provides comprehensive summary report
+This script:
+1. Loads governed edge connection IDs from `governed_connections.yaml` (or `COLLIBRA_GOVERNED_CONNECTIONS_CONFIG`)
+2. For each governed edge: calls the Catalog refresh API, then **waits for the refresh job to complete** (polls until COMPLETED, ERROR, or timeout)
+3. For each **failed** edge: lists database connections, gets owners from the Catalog API (`ownerIds`), **deduplicates by user ID** (one notification per person per failed database), and **notifies** each unique owner (console handler by default; you can plug in Collibra or email handlers). Each notification includes connection name, **database ID**, **user ID**, and email.
+4. Prints a **summary report**: succeeded/failed counts; failed edge connections; failed databases with **database ID** and owners (name, email, **user ID**); and notifications sent as `connection | database_id | user_id | email`.
 
-**Example Output:**
-```
-================================================================================
-FAILED DATABASES AND THEIR OWNERS
-================================================================================
+We only govern and test connections; no metadata sync. Logging is colored when run in a TTY; set `COLLIBRA_LOG_FILE` to also write logs to a file.
 
-Database: DS_DEMO_DATA
-  Database ID: 0197e4de-e599-75c4-8fff-9b0fd56508c9
-  Connection ID: f919489f-2942-418c-a282-4473a1d7492a
-  Error: Database API request failed: 500 Server Error...
-  Owner:
-    - Name: Gorik Desmet
-    - Email: orik@datashift.eu
-    - Owner ID: 474d1818-0822-4570-bd67-8f629730ce61
+### List governed database connections
 
-================================================================================
-NOTIFICATIONS SENT
-================================================================================
+To refresh then list database connections for your governed set (with optional filter by governed edge IDs):
 
-   ✓ Notifications sent to owners for 3 failed database(s)
-   ✓ Each owner received notification with database details and error information
-   ✓ Summary report generated
+```bash
+python3 scripts/test_database_connections_simple.py
 ```
 
-**Notification Process:**
-When a database synchronization fails, the script automatically:
-1. Fetches all owners from the `ownerIds` array
-2. Prepares a formatted notification message
-3. Sends the notification to all owners
-
-The notification includes:
-
-```json
-{
-  "generated_at": "2024-01-01T12:00:00",
-  "total_failed": 3,
-  "failed_databases": [
-    {
-      "database": {
-        "name": "DS_DEMO_DATA",
-        "database_id": "0197e4de-e599-75c4-8fff-9b0fd56508c9",
-        "connection_id": "f919489f-2942-418c-a282-4473a1d7492a"
-      },
-      "error": "Database API request failed: 500 Server Error...",
-      "owners": [
-        {
-          "owner_id": "474d1818-0822-4570-bd67-8f629730ce61",
-          "name": "Gorik Desmet",
-          "email": "orik@datashift.eu",
-          "username": "gorik.desmet"
-        }
-      ],
-      "notification_message": "Hello,\n\nWe wanted to inform you that the metadata synchronization for your database has failed.\n\nDatabase: DS_DEMO_DATA\nDatabase ID: 0197e4de-e599-75c4-8fff-9b0fd56508c9\n..."
-    }
-  ]
-}
-```
-
-**Key Features:**
-- **Multiple Owners Support**: Notifications are sent to all owners in the `ownerIds` array
-- **Automatic Sending**: Notifications are sent automatically when synchronizations fail
-- **Complete Owner Information**: Includes owner ID, name, email, and username for each owner
-- **Formatted Messages**: Human-readable notification messages with all relevant details
-
-**Notification Message Format:**
-The notification message contains:
-- Professional greeting to the owner(s)
-- Explanation of the synchronization failure
-- Database details (name, ID, connection ID)
-- Error details
-- List of all owners (if multiple)
-- Action items and contact information
+Uses `governed_connections.yaml`; if present, refreshes only those edge IDs then lists and filters connections. If YAML is missing or empty, skips refresh and lists all connections with a database asset ID.
 
 ### Programmatic Usage
 
@@ -249,14 +242,13 @@ client = CollibraClient(
 # Create database connection manager
 db_manager = DatabaseConnectionManager(client=client, use_oauth=True)
 
-# List all database connections
+# List database connections (optionally filter by edge_connection_id for governed subset)
 connections = db_manager.list_database_connections()
 
-# Synchronize metadata for a specific database
-sync_result = db_manager.synchronize_database_metadata(connections[0].database_id)
-
-# Monitor job status
-job_status = client.get_job_status(sync_result["jobId"])
+# Refresh a governed edge and wait for job completion (see refresh_governed_connections.py)
+result = db_manager.refresh_database_connections(edge_connection_id="your-edge-uuid")
+job_id = result.get("id")
+job_status = client.get_job_status(job_id)
 ```
 
 ### Testing
@@ -339,29 +331,19 @@ This will:
 - ✅ Fetch current user information
 - ✅ Verify connection is working
 
-**Database connection testing:**
+**Connection testing (governed set, wait for completion):**
 ```bash
-python3 scripts/test_database_connections.py
+python3 scripts/refresh_governed_connections.py
 ```
-This uses OAuth Bearer token authentication (no Basic Auth credentials needed).
+Tests only the edge connection IDs in `governed_connections.yaml`: triggers refresh for each and waits for each job to complete. Connection governing only; no metadata sync.
 
-**Fetch owners for failing databases:**
+**List governed database connections:**
 ```bash
-python3 scripts/test_fetch_failing_database_owners.py
+python3 scripts/test_database_connections_simple.py
 ```
-This script:
-- Synchronizes metadata for each database
-- Monitors job status
-- Fetches owner information from `ownerIds` array (Catalog Database API)
-- Displays detailed owner information for failures
+Loads `governed_connections.yaml`; refreshes only governed edge IDs then lists and filters connections. If YAML is missing or empty, skips refresh and lists all connections with database asset ID.
 
-**Other utility scripts:**
-- `test_fetch_users.py` - Fetch and display users from Collibra
-- `test_database_connections_simple.py` - Simple database connection listing
-- `test_synchronize_database.py` - Standalone database synchronization
-- `test_job_status.py` - Inspect job status response structure
-
-See `scripts/README.md` for all available utility scripts.
+See `scripts/README.md` for script details.
 
 #### Test Requirements
 
@@ -531,7 +513,7 @@ except CollibraAPIError as e:
 
 ## Database Connection Testing
 
-The library includes functionality to test database connections and notify owners of failures.
+The library supports **testing database connections** and **reducing integration and lineage break risk** by operating on a governed subset of edge connections. It lists/refreshes connections, tests them (refresh and monitor jobs), and notifies owners when failures occur.
 
 ### Quick Start
 
@@ -566,7 +548,7 @@ db_manager = DatabaseConnectionManager(
     use_oauth=True,  # Uses OAuth Bearer token (default)
 )
 
-# List all database connections
+# List database connections (optionally filter by edge_connection_id for a governed subset)
 connections = db_manager.list_database_connections()
 for conn in connections:
     print(f"Connection: {conn.name} (ID: {conn.id})")
@@ -592,20 +574,19 @@ export COLLIBRA_CLIENT_SECRET="your_client_secret"
 export COLLIBRA_BASIC_AUTH_USERNAME="your_username"
 export COLLIBRA_BASIC_AUTH_PASSWORD="your_password"
 
-# Run the test script
-uv run python test_database_connections.py
+# Run connection testing (governed set)
+uv run python scripts/refresh_governed_connections.py
 ```
 
 ### Database Connection Manager
 
 The `DatabaseConnectionManager` class provides methods to:
 
-- **`list_database_connections()`** - List all synchronized database connections
-- **`refresh_database_connections()`** - Refresh connections from the data source
+- **`list_database_connections(edge_connection_id=...)`** - List database connections registered in the catalog, optionally filtered by edge connection ID (for governed subset)
+- **`refresh_database_connections(edge_connection_id)`** - Refresh connections from the data source for a single Edge connection (required; use governed edge IDs from YAML)
 - **`test_database_connection()`** - Test if a connection is still valid
 - **`get_database_connection_by_id()`** - Get a specific connection by ID
 - **`get_database_asset()`** - Get database asset details (returns `ownerIds` array)
-- **`synchronize_database_metadata()`** - Trigger metadata synchronization job
 
 ### Owner Information Retrieval
 

@@ -1,0 +1,21 @@
+# Governed Edge Connections – version-controlled; used for connection testing (refresh) and filtering.
+# Only these edge_connection_ids are refreshed and tested; add or remove entries to change scope.
+
+governed_connections:
+  "1b6935cc-4d73-4a20-a6e2-84b66d152786":
+    name: "AR Snowflake - Unified Data Governance"
+    description: "Primary Snowflake warehouse for analytics"
+    environment: production
+    owner_team: "Analytics"
+
+  "39744ba6-f429-49ca-be30-1f7560bf184c":
+    name: "TP Databricks"
+    description: "Staging DB for integration tests"
+    environment: staging
+    owner_team: "Platform"
+
+  "214d4da2-69d5-4d03-9008-5ab4d6795145":
+    name: "Snowflake Collibra Connection"
+
+  "4325d2ed-ab31-469c-ae94-443391ed242a":
+    name: "Snowflake-DATA_PLATFORM_XYZ"

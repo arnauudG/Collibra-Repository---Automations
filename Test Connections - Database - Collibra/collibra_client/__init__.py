@@ -51,6 +51,9 @@ from collibra_client.catalog import (
     DatabaseConnectionManager,
 )
 
+# Governed connections config (YAML)
+from collibra_client.governed_config import load_governed_config
+
 # Notifications functionality
 from collibra_client.notifications import (
     NotificationHandler,
@@ -66,6 +69,7 @@ __all__ = [
     "CollibraConfig",
     "DatabaseConnection",
     "DatabaseConnectionManager",
+    "load_governed_config",
     "NotificationHandler",
     "CollibraNotificationHandler",
     "ConsoleNotificationHandler",

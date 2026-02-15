@@ -1,58 +1,29 @@
 # Utility Scripts
 
-This directory contains utility scripts for manual testing and examples. These are **not** pytest tests but can be useful for quick testing and demonstrations.
+Scripts for connection governing and quick checks. These are **not** pytest tests.
 
-## Main Orchestrator Script
+## Scripts
 
-**Note**: For the complete end-to-end workflow, use the main orchestrator script in the project root:
+### `refresh_governed_connections.py` (primary)
 
-```bash
-python3 main.py
-```
-
-This script orchestrates everything from connection testing to sending notifications to owners. See the main `README.md` for details.
-
-## Utility Scripts
-
-The following scripts provide more granular functionality:
-
-### `test_connection_simple.py`
-Quick OAuth connection test script.
+Connection testing for your governed set: refresh each edge, wait for completion, **notify owners of failed connections**, and print a **summary report**.
 
 **Usage:**
 ```bash
-python3 scripts/test_connection_simple.py
+python3 scripts/refresh_governed_connections.py
 ```
 
-**What it tests:**
-- Loads configuration from `.env`
-- Creates authenticated Collibra client
-- Tests OAuth connection
-- Fetches current user information
+**What it does:**
+- Loads governed edge connection IDs from `governed_connections.yaml` (or `COLLIBRA_GOVERNED_CONNECTIONS_CONFIG`)
+- For each governed edge: calls the Catalog refresh API, waits for the job to complete (polls until COMPLETED or ERROR), records result
+- For each **failed** edge: lists database connections under that edge, fetches owners (`ownerIds`) for each database, and **notifies** each owner (console by default; you can plug in other handlers)
+- Prints a **summary report**: succeeded/failed counts, failed databases and their owners, and list of notifications sent
 
-### `test_fetch_users.py`
-Test script to fetch users from Collibra API.
-
-**Usage:**
-```bash
-python3 scripts/test_fetch_users.py
-```
-
-**What it tests:**
-- Loads configuration from `.env`
-- Creates authenticated Collibra client
-- Tests connection (with rate limit handling)
-- Fetches current user information
-- Fetches list of users (with pagination)
-- Displays user details (ID, email, etc.)
-
-**Features:**
-- Handles rate limits gracefully (waits and retries)
-- Shows detailed user information
-- Demonstrates pagination with limit/offset
+Governs connections only; no metadata sync. The end goal is to notify owners when a connection test fails and have a clear summary report.
 
 ### `test_database_connections_simple.py`
-Simple script to list database connections.
+
+List database connections, optionally limited to the governed set.
 
 **Usage:**
 ```bash
@@ -60,106 +31,28 @@ python3 scripts/test_database_connections_simple.py
 ```
 
 **What it does:**
-- Lists all database connections
-- Filters to connections with both edge connection ID and database asset ID
-- Displays connection details
+- Loads `governed_connections.yaml` if present
+- If governed IDs exist: refreshes only those edge connections, then lists and filters to connections whose `edge_connection_id` is in the governed set (and that have a database asset ID)
+- If YAML is missing or empty: skips refresh and lists all connections with a database asset ID
 
-### `test_database_connections.py`
-Full database connection testing script with synchronization and notifications.
+### `test_connection_simple.py`
+
+Quick OAuth connection test.
 
 **Usage:**
 ```bash
-python3 scripts/test_database_connections.py
+python3 scripts/test_connection_simple.py
 ```
 
 **What it does:**
+- Loads configuration from `.env`
+- Creates authenticated Collibra client
 - Tests OAuth connection
-- Lists all database connections
-- Tests each connection
-- Synchronizes metadata for each database
-- Monitors job status
-- Fetches owner information for failures
-- Provides detailed summary report
-
-### `test_synchronize_database.py`
-Standalone script for database metadata synchronization.
-
-**Usage:**
-```bash
-python3 scripts/test_synchronize_database.py
-```
-
-**What it does:**
-- Fetches database connections with both edge connection ID and database asset ID
-- Synchronizes metadata for each database asset
-- Monitors job status until completion
-- Fetches owner information for failed synchronizations
-- Provides summary report
-
-### `test_fetch_failing_database_owners.py`
-Script to fetch owners for databases that fail synchronization.
-
-**Usage:**
-```bash
-python3 scripts/test_fetch_failing_database_owners.py
-```
-
-**What it does:**
-- Lists all database connections with both edge and database IDs
-- Attempts to synchronize metadata for each database
-- Monitors job status until completion
-- For failed synchronizations, fetches and displays owner information
-- Uses Catalog Database API which returns `ownerIds` (array)
-- Shows summary of failed databases with their owners
-
-**Features:**
-- Fetches owner information from `ownerIds` array (Catalog Database API)
-- Displays owner name, email, username, and owner ID
-- Handles both synchronization failures and job failures
-- Provides detailed summary report
-
-### `test_job_status.py`
-Utility to inspect job status response structure.
-
-**Usage:**
-```bash
-python3 scripts/test_job_status.py <job_id>
-```
-
-**Example:**
-```bash
-python3 scripts/test_job_status.py 019c41d0-b593-74a4-a236-4a80e21765c3
-```
-
-**What it does:**
-- Fetches job status for a given job ID
-- Displays full response structure
-- Shows extracted fields for debugging
+- Fetches current user information
 
 ## Requirements
 
-All scripts require:
 - `.env` file with Collibra credentials
-- Python dependencies installed (`uv sync` or `pip install -e ".[dev]"`)
+- Dependencies installed (`uv sync` or `pip install -e .`)
 
-## Note
-
-For formal testing, use pytest tests in the `tests/` directory:
-```bash
-# Run integration tests
-uv run pytest -m integration -v
-
-# Run without coverage (recommended to avoid INTERNALERROR)
-uv run pytest -m integration -v --no-cov
-
-# Run specific test
-uv run pytest tests/test_connection.py::TestConnection::test_connection_success -v
-```
-
-**Rate Limiting**: If you encounter rate limits (429 errors) when running pytest tests, they will automatically skip instead of failing. To avoid rate limits:
-- Run tests individually
-- Wait between test runs
-- Use these utility scripts for quick checks instead of pytest
-
-See the main `README.md` for comprehensive testing documentation.
-
+For governed scripts, create `governed_connections.yaml` at project root (or set `COLLIBRA_GOVERNED_CONNECTIONS_CONFIG`). See main `README.md` for YAML format.

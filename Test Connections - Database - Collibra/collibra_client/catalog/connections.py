@@ -211,11 +211,11 @@ class DatabaseConnectionManager:
         List all available database connections.
 
         This method retrieves a list of database connections that have been
-        synchronized with the catalog. Only synchronized connections are returned.
+        registered with the catalog. Only connections known to the catalog are returned.
 
-        **Important**: To ensure you get ALL database connections (including newly
-        added ones), call `refresh_database_connections()` first to synchronize
-        connections from the data source before calling this method.
+        **Important**: To ensure you get up-to-date database connections, call
+        `refresh_database_connections(edge_connection_id=...)` for each governed
+        edge before calling this method.
 
         Args:
             edge_connection_id: Optional UUID of the Edge connection to filter by.
@@ -231,9 +231,9 @@ class DatabaseConnectionManager:
 
         Examples:
             >>> manager = DatabaseConnectionManager(client, use_oauth=True)
-            >>> # Refresh first to get all connections
-            >>> manager.refresh_database_connections()
-            >>> # Then list all connections
+            >>> # Refresh a governed edge first
+            >>> manager.refresh_database_connections(edge_connection_id="edge-uuid")
+            >>> # Then list connections (optionally filter by edge_connection_id)
             >>> connections = manager.list_database_connections(limit=100)
             >>> for conn in connections:
             ...     print(f"Connection: {conn.name} (ID: {conn.id})")
@@ -255,42 +255,34 @@ class DatabaseConnectionManager:
 
         return [DatabaseConnection.from_dict(conn_data) for conn_data in results]
 
-    def refresh_database_connections(
-        self,
-        edge_connection_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    def refresh_database_connections(self, edge_connection_id: str) -> Dict[str, Any]:
         """
-        Refresh database connections in the catalog.
+        Refresh database connections in the catalog for a specific Edge connection.
 
         This method triggers a refresh of database connections available in
-        the catalog with the data source. Use this if a specific database
-        connection is missing from the list.
+        the catalog with the data source (required by the API). Use a governed
+        set of edge_connection_ids from your YAML config.
 
         Args:
-            edge_connection_id: Optional UUID of the Edge connection to refresh.
-                               If not provided, refreshes all connections.
+            edge_connection_id: UUID of the Edge connection to refresh (required).
 
         Returns:
-            API response dictionary.
+            API response dictionary (202 with Job body including id for polling).
 
         Raises:
+            ValueError: If edge_connection_id is missing or empty.
             CollibraAPIError: If the refresh operation fails.
 
         Examples:
-            >>> # Refresh all connections
-            >>> result = manager.refresh_database_connections()
-            >>>
-            >>> # Refresh specific Edge connection
             >>> result = manager.refresh_database_connections(
             ...     edge_connection_id="edge-uuid"
             ... )
+            >>> job_id = result.get("id")
         """
+        if not edge_connection_id or not edge_connection_id.strip():
+            raise ValueError("edge_connection_id is required for refresh")
         endpoint = f"{self.CATALOG_API_BASE}/databaseConnections/refresh"
-
-        params = {}
-        if edge_connection_id:
-            params["edgeConnectionId"] = edge_connection_id
-
+        params = {"edgeConnectionId": edge_connection_id}
         return self._make_basic_auth_request("POST", endpoint, params=params)
 
     def get_database_connection_by_id(self, connection_id: str) -> Optional[DatabaseConnection]:
@@ -318,7 +310,7 @@ class DatabaseConnectionManager:
 
         This method tests if a database connection is still valid by attempting
         to refresh it. If the refresh fails due to credential issues, it indicates
-        that the database sync has failed.
+        that the connection refresh has failed.
 
         Args:
             connection_id: UUID of the database connection to test.
@@ -371,30 +363,25 @@ class DatabaseConnectionManager:
 
     def synchronize_database_metadata(self, database_id: str) -> Dict[str, Any]:
         """
-        Synchronize metadata for a database asset.
+        Trigger a metadata sync job for a database asset (Catalog API).
 
-        This method triggers a metadata synchronization job for a specific
-        database asset. The synchronization will update the database schema,
-        tables, columns, and other metadata from the source database.
+        This method calls the Catalog API endpoint to start a metadata
+        synchronization job. This project governs connections via refresh only;
+        use this method only if you need metadata sync separately.
 
         Args:
-            database_id: UUID of the Database asset to synchronize.
+            database_id: UUID of the Database asset.
 
         Returns:
-            Dictionary containing job information, including:
-            - jobId: UUID of the synchronization job
-            - status: Initial job status
-            - message: Status message
+            Dictionary containing job information (e.g. jobId, status).
 
         Raises:
-            CollibraAPIError: If the synchronization request fails.
+            CollibraAPIError: If the request fails.
 
         Examples:
             >>> result = manager.synchronize_database_metadata("database-uuid")
             >>> job_id = result.get("jobId")
-            >>> # Monitor the job status
             >>> status = client.get_job_status(job_id)
-            >>> print(f"Job status: {status['status']}")
         """
         endpoint = f"{self.CATALOG_API_BASE}/databases/{database_id}/synchronizeMetadata"
         return self._make_basic_auth_request("POST", endpoint)

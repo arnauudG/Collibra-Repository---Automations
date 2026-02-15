@@ -2,15 +2,18 @@
 Notification module for database connection failures.
 
 This module provides functionality to notify database connection owners
-when their database sync fails due to credential changes.
+when their database connection refresh fails (e.g. due to credential changes).
 """
 
+import logging
 from typing import Dict, Any, Optional
 from abc import ABC, abstractmethod
 
 from collibra_client.core.client import CollibraClient
 from collibra_client.catalog.connections import DatabaseConnection
 from collibra_client.core.exceptions import CollibraAPIError
+
+logger = logging.getLogger(__name__)
 
 
 class NotificationHandler(ABC):
@@ -97,7 +100,7 @@ class CollibraNotificationHandler(NotificationHandler):
                 # This is a placeholder - implement based on your Collibra setup
                 task_data = {
                     "name": f"Database Connection Failure: {connection.name}",
-                    "description": f"Database connection sync failed: {error_message}",
+                    "description": f"Database connection refresh failed: {error_message}",
                     "assetId": connection.database_id,
                 }
 
@@ -107,19 +110,24 @@ class CollibraNotificationHandler(NotificationHandler):
                 # Uncomment when you have the task creation endpoint
                 # self.client.post("/rest/2.0/tasks", json_data=task_data)
 
-            # Log the notification attempt
-            print(f"Notification sent for connection {connection.name} ({connection.id})")
-            print(f"Error: {error_message}")
+            logger.info(
+                "Notification sent for connection %s (%s): %s",
+                connection.name,
+                connection.id,
+                error_message,
+            )
             if owner_info:
-                print(f"Owner: {owner_info.get('username', owner_info.get('id', 'Unknown'))}")
-
+                logger.info(
+                    "Owner: %s",
+                    owner_info.get("username", owner_info.get("id", "Unknown")),
+                )
             return True
 
         except CollibraAPIError as e:
-            print(f"Failed to send notification via Collibra: {e}")
+            logger.error("Failed to send notification via Collibra: %s", e)
             return False
         except Exception as e:
-            print(f"Unexpected error sending notification: {e}")
+            logger.exception("Unexpected error sending notification")
             return False
 
 
@@ -169,18 +177,23 @@ class EmailNotificationHandler(NotificationHandler):
         # Implement using smtplib or your email service
         email = owner_info.get("email") if owner_info else None
         if not email:
-            print(f"No email address found for connection {connection.name}")
+            logger.warning(
+                "No email address found for connection %s", connection.name
+            )
             return False
 
-        print(f"Email notification would be sent to {email}")
-        print(f"Subject: Database Connection Failure: {connection.name}")
-        print(f"Body: {error_message}")
+        logger.info(
+            "Email notification would be sent to %s; subject: Database Connection Failure: %s",
+            email,
+            connection.name,
+        )
+        logger.debug("Body: %s", error_message)
         return True
 
 
 class ConsoleNotificationHandler(NotificationHandler):
     """
-    Simple notification handler that prints to console.
+    Simple notification handler that logs to the application logger.
 
     Useful for testing and development.
     """
@@ -192,7 +205,7 @@ class ConsoleNotificationHandler(NotificationHandler):
         owner_info: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """
-        Print notification to console.
+        Log notification (connection failure details and owner).
 
         Args:
             connection: The database connection that failed.
@@ -202,17 +215,22 @@ class ConsoleNotificationHandler(NotificationHandler):
         Returns:
             Always returns True.
         """
-        print("=" * 60)
-        print("DATABASE CONNECTION FAILURE NOTIFICATION")
-        print("=" * 60)
-        print(f"Connection Name: {connection.name}")
-        print(f"Connection ID: {connection.id}")
-        print(f"Database ID: {connection.database_id or 'N/A'}")
-        print(f"Error: {error_message}")
+        logger.warning("DATABASE CONNECTION FAILURE NOTIFICATION")
+        logger.warning(
+            "Connection: %s (ID: %s) | Database ID: %s",
+            connection.name,
+            connection.id,
+            connection.database_id or "N/A",
+        )
+        logger.warning("Error: %s", error_message)
         if owner_info:
-            print(f"Owner: {owner_info.get('username', owner_info.get('id', 'Unknown'))}")
+            owner_id = owner_info.get("id") or "N/A"
+            logger.warning("Owner user ID: %s", owner_id)
+            logger.warning(
+                "Owner: %s",
+                owner_info.get("username", owner_info.get("fullName", "Unknown")),
+            )
             if owner_info.get("email"):
-                print(f"Email: {owner_info['email']}")
-        print("=" * 60)
+                logger.warning("Email: %s", owner_info["email"])
         return True
 

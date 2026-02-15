@@ -2,7 +2,7 @@
 Notification system for database connection failures.
 
 This module provides functionality to notify database connection owners
-when their database sync fails due to credential changes.
+when their database connection refresh fails (e.g. due to credential changes).
 """
 
 from collibra_client.notifications.handlers import (
