@@ -1,6 +1,6 @@
-# Collibra Database Connection Testing & Governance Tool
+# Data Source Connection Validation for Collibra
 
-An automated tool for **governing and testing database connections** and **reducing integration and lineage break risk** in Collibra. It governs a defined subset of edge connections (maintained in a version-controlled YAML file), tests those connections, and when failures occur notifies **database owners**—the downstream users who own the affected databases—so broken integrations are caught and actionable. This aligns with Collibra’s accountability model: the tool notifies the same people Collibra holds responsible for those assets (via Owner/Steward responsibilities and the Catalog’s `ownerIds`).
+An automated tool for **governing and testing data source connections** and **reducing integration and lineage break risk** in Collibra. We are not talking about “database connections” only: we mean **data source connections** in the broad sense—databases, data warehouses, APIs, filesystems, SaaS sources, and anything Collibra relies on to interact with data systems. The tool governs a defined subset of edge connections (maintained in a version-controlled YAML file), tests those connections, and when failures occur notifies **owners**—the downstream users Collibra holds responsible for those assets (via Owner/Steward responsibilities and the Catalog’s `ownerIds`)—so broken integrations are caught and actionable.
 
 ## Overview
 
@@ -101,7 +101,89 @@ We only govern and test connections (refresh + wait for job); no metadata sync. 
 
 ### Collibra accountability
 
-Collibra enforces accountability through **responsibilities** on assets (e.g. Owner, Steward). This tool uses that same model: it notifies the **database owners** returned by the Catalog API (`ownerIds`), so the people who are notified are exactly those Collibra considers responsible for the affected databases. Governance and accountability stay aligned.
+Collibra enforces accountability through **responsibilities** on assets (e.g. Owner, Steward). This tool uses that same model: it notifies the **owners** returned by the Catalog API (`ownerIds`), so the people who are notified are exactly those Collibra considers responsible for the affected data sources. Governance and accountability stay aligned.
+
+## Context & Value (Operating Model)
+
+This section positions the automation in governance and operating-model terms: what problem it addresses, why it matters, and how it fits the O²-R-C-D framework (Organization, Ownership, Risk, Control, Decision).
+
+### 1. Context & Problem (WHAT)
+
+In many data governance programs, **data source connections** registered in Collibra are assumed to work but are rarely verified continuously. As a result:
+
+- Connections exist as metadata but are operationally unusable
+- Governance, profiling, lineage, or quality jobs fail late
+- Failures surface downstream instead of at the governance layer
+- Ownership of broken connections is unclear
+
+This creates hidden operational risk in governance workflows.
+
+### 2. Why This Matters (WHY)
+
+At scale, unreliable data source connectivity leads to:
+
+- Failed or delayed governance processes
+- Loss of trust in the governance platform
+- Manual firefighting instead of controlled remediation
+- Ambiguous accountability across teams
+
+In a mature operating model, **governance metadata must reflect operational reality, not intentions.**
+
+### 3. The Solution (SO WHAT)
+
+This automation introduces **systematic validation** of data source connections defined in Collibra, ensuring that:
+
+- Connectivity is tested programmatically
+- Failures are detected early
+- Metadata reflects actual usability
+- Owners can be notified or actioned
+
+Data source connections become **verifiable governance assets**, not static declarations.
+
+### 4. O²-R-C-D Framework Alignment
+
+| Dimension | How this automation fits |
+|-----------|---------------------------|
+| **Organization** | Fits organizations where Collibra is a governance control plane, data sources are owned by domains or platforms, and governance activities depend on reliable access to data systems. Reinforces existing responsibility boundaries. |
+| **Ownership** | Connections are treated as owned assets. The automation makes connection health observable, enables escalation to the appropriate owner or steward, and removes ambiguity around responsibility for remediation. Ownership becomes operational, not symbolic. |
+| **Risk** | Reduces risk of silent failures in governance jobs, governance blind spots from unreachable sources, and delayed detection of access or configuration issues. Failures are surfaced before governance processes rely on them. |
+| **Control** | Enforces a clear control boundary: a connection is either validated or unusable. Broken connections are no longer implicitly accepted; governance workflows can rely on verified connectivity. Lightweight, proportional control aligned with governance maturity. |
+| **Decision** | Enables explicit decisions: *Can this data source be used for governance activities? Should profiling, lineage, or quality jobs proceed? Does this require owner intervention?* Uncertainty is replaced with explicit, auditable decisions. |
+
+### 5. Architectural Role
+
+This automation sits:
+
+- **Below** enterprise governance policy (ownership, classification)
+- **Above** downstream execution failures
+- **Alongside** Collibra as an operational integrity layer
+
+It **complements**—rather than replaces—broader governance and security controls.
+
+### 6. Value Summary
+
+| Dimension | Value |
+|-----------|--------|
+| Governance | Metadata reflects operational reality |
+| Operations | Failures detected earlier |
+| Ownership | Accountability is enforceable |
+| Risk | Reduced silent failure |
+| Trust | Higher confidence in governance workflows |
+
+### 7. Positioning Statement
+
+> *"This automation turns data source connections in Collibra from declarative metadata into validated governance assets, reducing operational risk and making ownership enforceable."*
+
+### Why “data source connections” (not only “database connections”)
+
+Using **data source connections** (databases, warehouses, APIs, filesystems, SaaS, etc.):
+
+1. **Raises the abstraction level** — You are securing the governance interface to the data ecosystem, not just fixing a “database issue.”
+2. **Aligns with operating models** — Organizations own data sources across domains and technologies, not only “databases.”
+3. **Avoids tool-centric framing** — This becomes governance infrastructure, not DB tooling.
+
+*One sentence to keep:*  
+*"I validate the governance system’s access to data sources, not just connections—because governance can’t operate on assumptions."*
 
 ## Installation
 
