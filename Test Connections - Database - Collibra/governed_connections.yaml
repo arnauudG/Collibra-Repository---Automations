@@ -12,16 +12,16 @@ governed_connections:
     name: "TP Databricks"
     description: "<DESCRIPTION>"
     environment: development
-    owner_team: "Platform"
+    owner_team: "Platform Integration Team"
 
   "214d4da2-69d5-4d03-9008-5ab4d6795145":
     name: "Snowflake Collibra Connection"
     description: "<DESCRIPTION>"
     environment: development
-    owner_team: "Platform"
+    owner_team: "Data Governance & Engineering Team"
 
   "4325d2ed-ab31-469c-ae94-443391ed242a":
     name: "Snowflake-DATA_PLATFORM_XYZ"
     description: "<DESCRIPTION>"
     environment: development
-    owner_team: "Platform"
+    owner_team: "Data Governance & Engineering Team"
