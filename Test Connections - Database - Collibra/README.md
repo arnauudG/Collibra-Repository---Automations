@@ -126,7 +126,7 @@ flowchart TD
     A[Define governed scope in YAML]
     B[Load config and init client]
     C[Authenticate via OAuth]
-    D[Refresh governed edge connections]
+    D[Refresh governed edges]
     E[Poll job status until done]
     F[Record success or failure]
     G[List DBs for failed edges]
