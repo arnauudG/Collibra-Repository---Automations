@@ -1,65 +1,57 @@
-# Edge Connection Validation Control
+# Connection Validation Control
 
-This control validates the connectivity of data sources registered in Collibra Edge Sites. It automatically tests connections, monitors job status, and notifies owners when failures occur.
+Data source connections break silently. Credentials expire, firewalls change, Edge Sites go offline. When a connection dies, profiling jobs stop updating, lineage gaps appear, and metadata in Collibra quietly goes stale — often for weeks before an audit reveals the drift.
+
+This control catches those failures before they cascade. It systematically validates every governed data source connection, maps failures to the accountable owners in Collibra, and routes targeted alerts so the right people know and can act.
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Business Value](#business-value)
-- [How it Works: The Governance Control Loop](#how-it-works-the-governance-control-loop)
+- [Governance Risk](#governance-risk)
+- [The Enforcement Loop](#the-enforcement-loop)
 - [Architecture](#architecture)
-- [Usage](#usage)
+- [Governance Workflows](#governance-workflows)
 - [Testing](#testing)
-- [Utility Scripts](#utility-scripts)
+- [Governance Investigation Tools](#governance-investigation-tools)
 - [Notification System](#notification-system)
 - [Configuration Options](#configuration-options)
 - [Troubleshooting](#troubleshooting)
-- [Key Features](#key-features)
 
-## Overview
+## Governance Risk
 
-In enterprise Collibra environments, data source connectivity can break silently due to credential expiration, network changes, or infrastructure updates. This control provides proactive validation:
+### Why This Control Exists
 
-- **Automated Testing**: Programmatically verifies connectivity on demand or on schedule
-- **Early Detection**: Catches failures before they impact lineage or profiling jobs
-- **Owner Accountability**: Routes alerts to the correct stewards based on Collibra metadata
+**The risk**: Connection failures are invisible to governance. Collibra continues to display metadata from the last successful profiling run, giving stewards and auditors a false sense of currency. By the time someone notices, the catalog may have been stale for weeks, and the blast radius — broken lineage, outdated classifications, unreliable reports — is already large.
 
-## Business Value
+**What this control enforces**: Every governed Edge connection is validated for reachability. Failures trigger immediate impact analysis and owner notification. Every run produces audit evidence of what was tested, what passed, what failed, and who was notified.
 
-### Operational Integrity
-**Challenge**: Connection failures often go unnoticed until critical profiling or lineage jobs fail in production.
+### Business Outcomes
 
-**Solution**: Proactive connectivity testing ensures Collibra metadata reflects the true operational state of your data ecosystem.
+| Outcome | How This Control Delivers It |
+|---------|------------------------------|
+| **Operational integrity** | Catches connectivity failures before they impact profiling, lineage, or downstream analytics |
+| **Ownership accountability** | Maps every failed connection to the responsible steward using Collibra's ownership model |
+| **Audit compliance** | Generates timestamped evidence of governance enforcement — what was validated and when |
+| **Reduced mean time to remediation** | Alerts reach the right owner immediately, not after an audit cycle |
 
-### Accountability Reinforcement
-**Challenge**: Large organizations struggle to identify who should fix broken Edge connections.
+## The Enforcement Loop
 
-**Solution**: Automated mapping from failed connections to database assets and their owners ensures alerts reach the right people.
-
-### Audit & Compliance
-**Challenge**: Compliance audits require proof that governance controls are actively monitored.
-
-**Solution**: Structured logs and summary reports provide a verifiable audit trail of all connection tests and owner notifications.
-
-## How it Works: The Governance Control Loop
-
-This control implements an automated feedback loop between your physical data infrastructure and your Collibra governance policies.
+This control implements a closed-loop enforcement cycle: detect failure, analyze impact, identify the accountable owner, notify, and generate audit evidence.
 
 ```mermaid
 graph TD
-    subgraph Cloud["Governance & Accountability - Collibra Cloud"]
-        Asset[Database Asset - Catalog]
-        Owner[Accountable Owner - Steward/Admin]
+    subgraph Cloud["Governance & Accountability — Collibra Cloud"]
+        Asset[Database Asset — Catalog]
+        Owner[Accountable Owner — Steward/Admin]
     end
 
-    subgraph Controls["Operational Integrity Layer - governance_controls"]
-        Control[Validation Control - test_edge_connections]
-        Logic[Impact & Ownership Mapping Logic]
+    subgraph Controls["Enforcement Layer — governance_controls"]
+        Control[Connection Validation Control]
+        Logic[Impact & Ownership Mapping]
     end
 
-    subgraph Infra["Infrastructure - Hybrid Security"]
+    subgraph Infra["Infrastructure — On-Premise / VPC"]
         Edge[Collibra Edge Site]
-        Source[(Data Source - Snowflake/S3/etc)]
+        Source[(Data Source — Snowflake/S3/etc)]
     end
 
     Control -->|1. Trigger Test| Edge
@@ -69,22 +61,22 @@ graph TD
     Logic -->|5. Cross-Reference| Asset
     Asset -->|6. Identify Accountable| Owner
     Control -->|7. Send Alert| Owner
-    Owner -.->|8. Fix Connection| Source
+    Owner -.->|8. Remediate| Source
 ```
 
-### Step-by-Step Business Process
+### Step-by-Step Enforcement Process
 
-The orchestrator executes this workflow for each governed Edge Site:
+The orchestrator executes this workflow for each governed scope:
 
-1. **Discovery**: Queries the Edge GraphQL API to list all child connections under the specified Edge Site(s) or individual connection ID(s).
+1. **Discovery**: Queries the Edge GraphQL API to enumerate all connections under the specified Edge Site(s) or validates specific connection ID(s).
 
-2. **Heuristic Filtering**: Each connection is evaluated by the `ConnectionTestHeuristic`:
+2. **Heuristic Filtering**: Each connection is evaluated for testability by the `ConnectionTestHeuristic`:
    - JDBC connections are always testable (standard database drivers)
    - Blacklisted types are skipped: PowerBI, Azure Lineage, Technical Lineage
    - Generic connections are testable if they have data-source parameters (connection-string, driver-class, host, etc.)
    - Connections with only `authType` configuration (OAuth shells) are skipped
 
-3. **Parallel Testing**: Testable connections are submitted to a `ThreadPoolExecutor`. For each connection:
+3. **Parallel Validation**: Testable connections are submitted to a `ThreadPoolExecutor`. For each connection:
    - A `connectionTestConnection` GraphQL mutation is sent to the Edge API
    - The mutation returns a `jobId` representing the async test job
    - The `JobPoller` monitors the job via `jobById` GraphQL queries
@@ -101,77 +93,78 @@ The orchestrator executes this workflow for each governed Edge Site:
    - Extracts `ownerIds` from the database asset
    - Fetches user details (name, email) for each unique owner via REST v2.0
 
-6. **Owner Notification**: Failed connections trigger notifications:
+6. **Owner Notification**: Failed connections trigger targeted alerts:
    - The configured `NotificationHandler` receives the connection, error message, and owner info
    - Console handler logs alerts; Email/Slack handlers can be plugged in
 
-7. **Reporting**: The `GovernanceReporter` generates:
+7. **Audit Reporting**: The `GovernanceReporter` generates:
    - Per-connection test results (pass/fail with timing)
    - Aggregate summary (total tested, passed, failed, success rate)
    - Impacted database assets with owner contact details
    - Full audit trail in structured log format
 
-**The Control Loop**: Technical failures are automatically detected, analyzed for business impact, mapped to the correct asset owners, and routed for remediation.
-
 ## Architecture
 
-This control uses a modular design for maintainability and testability:
+This control uses a modular design where each component has a distinct governance responsibility:
 
 ### Core Components
 
 **`GovernanceOrchestrator`** (`logic/orchestrator.py`)
-- Main workflow coordinator with three entry points:
-  - `run()` - Batch testing of all connections under Edge Sites
-  - `test_individual_connections()` - Direct testing of specific connection IDs
-  - `test_connections_in_edge_site()` - Targeted testing within an Edge Site context
+- Governance workflow coordinator with three enforcement entry points:
+  - `run()` — Batch enforcement across Edge Sites
+  - `test_individual_connections()` — Direct validation of specific connection IDs
+  - `test_connections_in_edge_site()` — Targeted enforcement within an Edge Site context
 - Manages parallel execution with ThreadPoolExecutor
-- Orchestrates discovery, filtering, testing, impact mapping, and reporting
+- Orchestrates the full enforcement loop: discovery → filtering → testing → impact mapping → reporting
 
 **`JobPoller`** (`logic/poller.py`)
-- Monitors async job status with configurable timeout handling
+- Monitors asynchronous governance job status with configurable timeout
 - Automatic fallback: tries REST API first, falls back to GraphQL for Edge jobs
 - Handles SUBMITTED state with separate timeout (stale job detection)
 - Error categorization: network, authentication, resource not found
 
 **`ImpactMapper`** (`logic/impact_mapper.py`)
+- Resolves the governance impact of failed connections
 - Maps failed Edge connections to Catalog database assets via the Catalog Database API
 - Retrieves owner IDs from database asset metadata
 - Deduplicates owners across multiple assets
 - Fetches user details (name, email, username) from REST v2.0
 
 **`GovernanceReporter`** (`logic/reporter.py`)
-- Generates structured logs with timestamps and visual hierarchy
-- Creates human-friendly summary reports with pass/fail counts and success rate
+- Generates audit-ready enforcement evidence
+- Structured logs with timestamps and visual hierarchy
+- Human-friendly summary reports with pass/fail counts and success rate
 - Formats impacted asset details and owner notification records
 
 **`ConnectionTestHeuristic`** (`logic/heuristic.py`)
-- Filters connections based on type (skip PowerBI, Azure Lineage, Technical Lineage)
+- Determines which connections are meaningful to test
+- Filters out non-database connections (PowerBI, Azure Lineage, Technical Lineage)
 - JDBC family connections are always testable
 - Generic connections are evaluated by inspecting their parameters for data-source keys
 - Prevents false positives from non-database sources
 
 **`ConnectionMonitor`** (`connection_monitor.py`)
-- Simplified alternative to the orchestrator for single-connection testing
+- Simplified alternative for single-connection validation
 - Provides `test_connection()` and `test_and_notify()` convenience methods
 - Uses the Catalog Database API for connection discovery
 
-## Usage
+## Governance Workflows
 
 ### Finding IDs
 
 - **Edge Site ID**: Navigate to Collibra → Settings → Edge → Sites. The ID is in the URL: `.../settings/edge/sites/<EDGE_SITE_ID>`
 - **Connection ID**: Navigate to Collibra → Settings → Edge → Sites → [Select Site] → Connections. The ID is in the URL or can be copied from the connection details page.
 
-### Execution Methods
+### Enforcement Modes
 
-The main script supports four execution modes. **Priority order**: `(--edge-site-id + --connection-id)` > `--connection-id` > `--edge-site-id` > `--yaml-config`
+The main script supports four enforcement modes. **Priority order**: `(--edge-site-id + --connection-id)` > `--connection-id` > `--edge-site-id` > `--yaml-config`
 
-#### Method 1: Specific Connections within Edge Site (Contextual Targeted Testing)
+#### Mode 1: Targeted Enforcement (Edge Site + Specific Connections)
 
-Test specific connections within an Edge Site context. Provides Edge Site metadata in logs and notifications while only testing the connections you specify:
+Validate specific connections within an Edge Site context. The Edge Site metadata enriches logs and notifications while limiting validation to the connections you specify:
 
 ```bash
-# Test specific connections within an Edge Site
+# Validate specific connections within an Edge Site
 uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
   --edge-site-id 7d343ace-eecf-4c8c-af2c-3420280e6a2d \
   --connection-id abc123 \
@@ -185,48 +178,48 @@ uv run python governance_controls/test_edge_connections/refresh_governed_connect
   --job-timeout 120
 ```
 
-**Use Case**: Test specific problematic connections while maintaining Edge Site context for better tracking and notifications.
+**When to use**: Investigating a known problematic connection while maintaining Edge Site context for tracking and notifications.
 
 **Note**: Only one `--edge-site-id` can be specified when using `--connection-id`. The script validates (with a warning) if connections belong to the specified Edge Site, but will still test them.
 
-#### Method 2: Individual Connection IDs (Direct Testing)
+#### Mode 2: Direct Validation (Specific Connections)
 
-Test specific connections directly without Edge Site context:
+Validate specific connections directly without Edge Site context:
 
 ```bash
-# Test a single connection
+# Validate a single connection
 uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
   --connection-id abc123-connection-uuid
 
-# Test multiple connections
+# Validate multiple connections
 uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
   --connection-id abc123 \
   --connection-id def456 \
   --connection-id ghi789
 ```
 
-**Use Case**: Quick testing of specific problematic connections without discovering the entire Edge Site or requiring Edge Site context.
+**When to use**: Quick validation of specific connections flagged by other systems or during incident response.
 
-#### Method 3: Edge Site IDs (Batch Testing)
+#### Mode 3: Batch Enforcement (Full Edge Site)
 
-Test all connections under specific Edge Sites:
+Validate all connections under specific Edge Sites:
 
 ```bash
-# Test a single Edge Site
+# Validate all connections under an Edge Site
 uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
   --edge-site-id 7d343ace-eecf-4c8c-af2c-3420280e6a2d
 
-# Test multiple Edge Sites
+# Validate multiple Edge Sites
 uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
   --edge-site-id 7d343ace-eecf-4c8c-af2c-3420280e6a2d \
   --edge-site-id another-edge-site-id
 ```
 
-**Use Case**: Test all connections within a specific Edge Site or environment.
+**When to use**: Comprehensive validation of an entire Edge Site — after infrastructure changes, during periodic governance reviews, or as part of environment validation.
 
-#### Method 4: YAML Configuration File (Governed Scope)
+#### Mode 4: Governed Scope (YAML Configuration)
 
-For managing multiple Edge Sites in version control, use `governed_connections.yaml`:
+Validate the full governed perimeter as defined in version-controlled YAML:
 
 ```yaml
 governed_connections:
@@ -253,22 +246,22 @@ uv run python governance_controls/test_edge_connections/refresh_governed_connect
   --yaml-config /path/to/config.yaml
 ```
 
-**Use Case**: Automated/scheduled governance validation of a fixed set of Edge Sites.
+**When to use**: Scheduled, unattended governance enforcement of a fixed perimeter. The YAML file defines what is governed and is version-controlled alongside the control code.
 
 ### CLI Options Reference
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--connection-id ID` | Individual connection ID to test (repeatable) | None |
-| `--edge-site-id ID` | Edge Site ID to test (repeatable; max 1 with `--connection-id`) | None |
-| `--yaml-config PATH` | Path to YAML configuration file | `governed_connections.yaml` |
-| `--max-workers N` | Maximum parallel workers for connection testing | 3 |
+| `--connection-id ID` | Individual connection ID to validate (repeatable) | None |
+| `--edge-site-id ID` | Edge Site ID to validate (repeatable; max 1 with `--connection-id`) | None |
+| `--yaml-config PATH` | Path to YAML governance scope configuration | `governed_connections.yaml` |
+| `--max-workers N` | Maximum parallel workers for connection validation | 3 |
 | `--poll-delay N` | Seconds between job status polls | 5 |
 | `--job-timeout N` | Maximum seconds to wait for job completion | 60 |
 
 ### Expected Output
 
-Example output from a batch test:
+Example output from a batch enforcement run:
 ```
 2026-03-01 10:15:30 [INFO] Loading configuration...
 2026-03-01 10:15:31 [INFO] Connection successful
@@ -318,12 +311,12 @@ uv run pytest tests/integration/governance_controls/test_edge_connections/test_o
 
 **Available Tests**:
 
-| Test | What it validates |
+| Test | What it Validates |
 |------|-------------------|
 | `test_orchestrator_initialization` | Orchestrator components are wired correctly |
-| `test_orchestrator_run_smoke` | Full Edge Site workflow completes without crashing |
-| `test_orchestrator_test_individual_connections` | Direct connection ID testing works end-to-end |
-| `test_orchestrator_test_connections_in_edge_site` | Contextual Edge Site + connection ID testing works |
+| `test_orchestrator_run_smoke` | Full Edge Site enforcement workflow completes without crashing |
+| `test_orchestrator_test_individual_connections` | Direct connection validation works end-to-end |
+| `test_orchestrator_test_connections_in_edge_site` | Targeted Edge Site + connection validation works |
 | `test_orchestrator_test_individual_connections_invalid_id` | Invalid connection IDs are handled gracefully |
 
 ### Full Project Test Suite
@@ -336,24 +329,22 @@ uv run pytest -v
 uv run pytest --cov=collibra_client --cov-report=term-missing
 ```
 
-## Utility Scripts
+## Governance Investigation Tools
 
-The following scripts are available for debugging and exploration. They are standalone and can be run independently.
+When a connection fails validation, these standalone scripts help diagnose the root cause. Each accepts required IDs as CLI arguments — no hardcoded values.
 
-| Script | Purpose | Usage |
-|--------|---------|-------|
-| `test_connection_simple.py` | Verify OAuth authentication works | `uv run python governance_controls/test_edge_connections/test_connection_simple.py` |
-| `test_database_connections_simple.py` | List governed database connections | `uv run python governance_controls/test_edge_connections/test_database_connections_simple.py` |
-| `list_site_connections.py` | List all connections for an Edge Site (tabular) | `uv run python governance_controls/test_edge_connections/list_site_connections.py <EDGE_SITE_ID>` |
-| `test_connection_detail.py` | Fetch detailed metadata for a specific connection | `uv run python governance_controls/test_edge_connections/test_connection_detail.py <CONNECTION_ID>` |
-| `debug_job_status.py` | Diagnose a job via both REST and GraphQL APIs | `uv run python governance_controls/test_edge_connections/debug_job_status.py <JOB_ID>` |
-| `run_all_tests.sh` | Run utility scripts sequentially with rate-limit delays | `bash governance_controls/test_edge_connections/run_all_tests.sh` |
-
-All utility scripts accept their required IDs as CLI arguments. No hardcoded values.
+| Script | What it Investigates | Usage |
+|--------|---------------------|-------|
+| `test_connection_simple.py` | Is the governance service account able to authenticate? | `uv run python governance_controls/test_edge_connections/test_connection_simple.py` |
+| `test_database_connections_simple.py` | Which database connections are registered and do they have `database_id` mappings? | `uv run python governance_controls/test_edge_connections/test_database_connections_simple.py` |
+| `list_site_connections.py` | What connections exist under an Edge Site and what types are they? | `uv run python governance_controls/test_edge_connections/list_site_connections.py <EDGE_SITE_ID>` |
+| `test_connection_detail.py` | What is the full configuration and metadata for a specific connection? | `uv run python governance_controls/test_edge_connections/test_connection_detail.py <CONNECTION_ID>` |
+| `debug_job_status.py` | What state is a governance job in, and does REST vs GraphQL agree? | `uv run python governance_controls/test_edge_connections/debug_job_status.py <JOB_ID>` |
+| `run_all_tests.sh` | Run all investigation scripts sequentially with rate-limit delays | `bash governance_controls/test_edge_connections/run_all_tests.sh` |
 
 ## Notification System
 
-When a connection test fails, the control follows this workflow:
+When a connection fails validation, the control executes the full accountability chain:
 
 1. **Identify Impact**: Query Catalog API to find all database assets linked to the failed Edge connection
 2. **Retrieve Owners**: Extract owner IDs from each affected database asset
@@ -390,7 +381,7 @@ orchestrator = GovernanceOrchestrator(
     client=client,
     db_manager=db_manager,
     notification_handler=ConsoleNotificationHandler(),
-    max_workers=3,          # Parallel execution threads
+    max_workers=3,          # Parallel validation threads
     poll_delay=5,           # Seconds between job status checks
     job_timeout=60          # Max seconds to wait for job completion
 )
@@ -398,7 +389,7 @@ orchestrator = GovernanceOrchestrator(
 
 ### Connection Filtering
 
-The `ConnectionTestHeuristic` automatically skips non-testable connection types:
+The `ConnectionTestHeuristic` automatically skips non-testable connection types to prevent false positives:
 - PowerBI connections (BI tools, not data sources)
 - Azure Lineage connectors (metadata only)
 - Technical Lineage connectors
@@ -416,8 +407,8 @@ JDBC family connections are always considered testable.
 | `COLLIBRA_USERNAME` | Yes (Basic) | Username for Basic Auth |
 | `COLLIBRA_PASSWORD` | Yes (Basic) | Password for Basic Auth |
 | `COLLIBRA_TIMEOUT` | No | Request timeout in seconds (default: 30) |
-| `COLLIBRA_LOG_FILE` | No | Path to log file for persistent logging |
-| `COLLIBRA_GOVERNED_CONNECTIONS_CONFIG` | No | Override path to YAML config |
+| `COLLIBRA_LOG_FILE` | No | Path to log file for persistent audit logging |
+| `COLLIBRA_GOVERNED_CONNECTIONS_CONFIG` | No | Override path to YAML governance scope |
 
 ## Troubleshooting
 
@@ -447,15 +438,3 @@ JDBC family connections are always considered testable.
 - Connections must be linked to Database assets in the Collibra Catalog
 - Run `test_database_connections_simple.py` to check if connections have `database_id` values
 - Ensure a Catalog refresh has been run for the Edge Site
-
-## Key Features
-
-- **Four Execution Modes**: Contextual, direct, batch, and governed-scope testing
-- **Parallel Execution**: ThreadPoolExecutor with configurable workers (default: 3)
-- **Robust Polling**: Automatic retry and GraphQL fallback for Edge jobs
-- **Smart Filtering**: Heuristic-based connection type detection
-- **Timeout Handling**: Global and per-state timeouts prevent indefinite waiting
-- **Impact Mapping**: Automatic failure-to-owner resolution via Catalog and REST APIs
-- **Colored Output**: Visual status indicators in console mode (TTY-aware)
-- **Audit Trail**: Structured logs with timestamps and job IDs
-- **Pluggable Notifications**: Abstract handler pattern for Console, Email, Slack, etc.

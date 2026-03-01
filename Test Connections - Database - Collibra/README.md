@@ -4,75 +4,84 @@
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-A unified platform for building and running automated governance controls in Collibra. This repository provides a production-ready SDK for Collibra API interactions and a modular framework for governance automation.
+## The Problem
 
-**Key Capabilities:**
-- OAuth 2.0 authentication with automatic token management
-- Catalog Database API integration for connection management
-- GraphQL support for Edge operations
-- Automated governance controls with owner notifications
-- Comprehensive test suite with integration tests
+Collibra knows what your data assets are, who owns them, and what policies govern them. But Collibra doesn't know if the infrastructure underneath is still working.
+
+Connections break silently. Credentials expire. Networks change. Edge Sites go offline. When that happens, profiling jobs fail, lineage gaps appear, metadata goes stale — and nobody finds out until an audit reveals that the catalog hasn't reflected reality for weeks.
+
+**This platform closes that gap.** It enforces governance by continuously validating that your data infrastructure matches what Collibra says it should be — and when it doesn't, it maps failures to accountable owners and makes sure the right people know.
+
+## What This Platform Does
+
+- **Enforces connectivity governance**: Validates that every registered data source is actually reachable
+- **Catches silent failures early**: Detects broken connections before they cascade into stale metadata, failed profiling, and lineage gaps
+- **Maps failures to owners**: Automatically resolves who is accountable for each broken connection using Collibra's ownership model
+- **Creates accountability**: Routes alerts to the right stewards so failures get fixed, not ignored
+- **Generates audit trails**: Every validation run produces structured, timestamped evidence of what was tested, what passed, what failed, and who was notified
 
 ## Table of Contents
 
-- [Architecture Overview](#architecture-overview)
+- [How Governance Enforcement Works](#how-governance-enforcement-works)
 - [The Governance Bridge](#the-governance-bridge)
 - [Repository Structure](#repository-structure)
-- [Quick Start](#quick-start)
+- [Start Enforcing Governance](#start-enforcing-governance)
 - [Testing](#testing)
 - [Development](#development)
+- [Governance Controls Roadmap](#governance-controls-roadmap)
 - [Troubleshooting](#troubleshooting)
 - [FAQ](#faq)
 - [Support](#support)
-- [Future Roadmap](#future-roadmap)
 - [Changelog](#changelog)
 - [License](#license)
 
-## Architecture Overview
+## How Governance Enforcement Works
 
-### 1. Reusable SDK (`collibra_client`)
+The platform has two layers, each with a distinct role in the enforcement chain.
 
-A production-ready, standalone Python library for any developer wanting to build custom integrations with Collibra.
+### 1. Governance SDK (`collibra_client`)
 
-**Key Features**:
-- Standalone library that can be extracted and used in other projects
-- OAuth 2.0 authentication with automatic token management
-- Support for Catalog Database APIs and GraphQL
-- Comprehensive error handling and retry logic
+The programmatic foundation for all governance automation. This standalone Python library provides authenticated, resilient access to Collibra's REST and GraphQL APIs — the interface through which every governance control interrogates and validates your data platform.
 
-👉 [Read the SDK Documentation](./collibra_client/README.md)
+**Governance capabilities**:
+- Authenticated access to Collibra's Catalog, Edge, and Core APIs (OAuth 2.0 + Basic Auth)
+- GraphQL operations for Edge Site interrogation and connection testing
+- Job polling for asynchronous governance operations (refresh, test, sync)
+- Resilient HTTP client with automatic retry on transient failures
+
+👉 [SDK Documentation](./collibra_client/README.md)
 
 ### 2. Governance Controls (`governance_controls`)
 
-A collection of automated, modular controls built on top of the SDK. This is the application layer that enforces policy and operational integrity.
+The enforcement layer. Each control is a modular, independently executable automation that validates a specific aspect of your data governance posture. Controls detect issues, analyze business impact, identify accountable owners, and route alerts for remediation.
 
-**Key Features**:
-- Modular, extensible framework for governance automation
-- Pre-built controls for connection testing and validation
-- Owner notification system for accountability
-- Audit-ready reporting and logging
+**Governance capabilities**:
+- Modular control framework — each control addresses a specific governance risk
+- Owner notification system that maps technical failures to business accountability
+- Audit-ready reporting with structured logs and compliance evidence
+- Version-controlled governance scope via YAML configuration
 
-👉 [Explore Governance Controls](./governance_controls/README.md)
+👉 [Controls Documentation](./governance_controls/README.md)
 
 ---
 
 ## The Governance Bridge
 
-The platform operates as an operational integrity layer, bridging the gap between Collibra's cloud governance (Policies/Owners) and the on-premise/VPC data ecosystem (Reality).
+The platform operates as an enforcement layer between Collibra's governance metadata (what *should* be true) and your data infrastructure (what *is* true).
 
 ```mermaid
 graph LR
-    subgraph Cloud["Business Context - Collibra Cloud"]
+    subgraph Cloud["Governance Policy — Collibra Cloud"]
         P[Policies & Metadata]
         O[Accountable Owners]
     end
 
-    subgraph Automation["Operational Layer - Automation"]
-        SDK[collibra_client SDK]
-        CTRL[governance_controls]
+    subgraph Automation["Enforcement Layer — Automation Platform"]
+        SDK[Governance SDK]
+        CTRL[Governance Controls]
     end
 
-    subgraph Infrastructure["Technical Reality - Infrastructure"]
+    subgraph Infrastructure["Infrastructure Reality — On-Premise / VPC"]
         E[Collibra Edge]
         D[(Data Sources)]
     end
@@ -84,7 +93,7 @@ graph LR
     CTRL -->|4. Notify on Failure| O
 ```
 
-**How it works**: The platform validates technical reality (data source connectivity) and maps failures to governance policies, automatically notifying accountable owners when issues arise.
+**The enforcement loop**: Controls validate infrastructure reality against governance policy. When reality diverges from policy — a connection is broken, a data source is unreachable — the platform maps the failure to the governing policy, identifies the accountable owner, and triggers remediation alerts. This is not monitoring. This is enforcement.
 
 ---
 
@@ -92,26 +101,26 @@ graph LR
 
 ```
 .
-├── collibra_client/              # Reusable Python SDK
+├── collibra_client/              # Governance SDK
 │   ├── core/                     # Authentication, HTTP client, config
 │   │   ├── auth.py              # OAuth 2.0 token management
-│   │   ├── client.py            # HTTP client with retry logic
+│   │   ├── client.py            # Resilient HTTP client with retry logic
 │   │   ├── config.py            # Environment-based configuration
-│   │   └── exceptions.py        # Custom exception hierarchy
+│   │   └── exceptions.py        # Governance exception hierarchy
 │   ├── catalog/                  # Catalog Database API operations
-│   │   └── connections.py       # Database connection management
+│   │   └── connections.py       # Connection management and validation
 │   └── README.md                # SDK documentation
 │
-├── governance_controls/          # Automated Controls Framework
-│   ├── test_edge_connections/   # Edge Connection Validation Control
-│   │   ├── logic/               # Modular business logic
-│   │   │   ├── orchestrator.py # Main workflow coordinator
-│   │   │   ├── poller.py       # Job status polling
-│   │   │   ├── reporter.py     # Report generation
-│   │   │   ├── impact_mapper.py # Owner mapping logic
-│   │   │   └── heuristic.py    # Connection filtering
-│   │   ├── notifications/       # Notification handlers
-│   │   ├── governed_connections.yaml # Edge Site configuration
+├── governance_controls/          # Governance Controls Framework
+│   ├── test_edge_connections/   # Connection Validation Control
+│   │   ├── logic/               # Control business logic
+│   │   │   ├── orchestrator.py # Governance workflow coordinator
+│   │   │   ├── poller.py       # Async job status polling
+│   │   │   ├── reporter.py     # Audit report generation
+│   │   │   ├── impact_mapper.py # Failure-to-owner mapping
+│   │   │   └── heuristic.py    # Connection testability analysis
+│   │   ├── notifications/       # Owner alert handlers
+│   │   ├── governed_connections.yaml # Governed scope definition
 │   │   └── README.md           # Control documentation
 │   └── README.md                # Controls framework documentation
 │
@@ -130,7 +139,7 @@ graph LR
 
 ---
 
-## Quick Start
+## Start Enforcing Governance
 
 ### Prerequisites
 - Python 3.9+
@@ -146,7 +155,7 @@ uv sync
 pip install -e .
 ```
 
-### Configuration
+### Configure Credentials
 
 ```bash
 # Copy the example environment file
@@ -155,7 +164,7 @@ cp .env.example .env
 
 Edit `.env` with your Collibra credentials. Choose **one** authentication method:
 
-**Option 1: OAuth 2.0 (Recommended)**
+**Option 1: OAuth 2.0 (Recommended for automation)**
 ```bash
 COLLIBRA_BASE_URL=https://your-instance.collibra.com
 COLLIBRA_CLIENT_ID=your_client_id
@@ -169,32 +178,32 @@ COLLIBRA_USERNAME=your_username
 COLLIBRA_PASSWORD=your_password
 ```
 
-### Verify Installation
+### Verify Connectivity
 
-Test your OAuth connection:
+Test that your credentials can reach Collibra:
 ```bash
 uv run python governance_controls/test_edge_connections/test_connection_simple.py
 ```
 
-### Run Your First Control
+### Run Your First Governance Control
 
-Execute the Edge Connection Validation control using one of four methods:
+The Connection Validation Control tests data source connectivity and maps failures to owners. Choose the enforcement scope that fits your needs:
 
 ```bash
-# Method 1: Test specific connections within an Edge Site (contextual testing)
+# Targeted enforcement: Test specific connections within an Edge Site
 uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
   --edge-site-id 7d343ace-eecf-4c8c-af2c-3420280e6a2d \
   --connection-id abc123 --connection-id def456
 
-# Method 2: Test specific connections by ID (direct testing)
+# Direct validation: Test specific connections by ID
 uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
   --connection-id abc123-connection-uuid
 
-# Method 3: Test all connections under an Edge Site (batch testing)
+# Batch enforcement: Validate all connections under an Edge Site
 uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
   --edge-site-id 7d343ace-eecf-4c8c-af2c-3420280e6a2d
 
-# Method 4: Use YAML configuration file (governed scope)
+# Governed scope: Validate the full governed perimeter (from YAML config)
 uv run python governance_controls/test_edge_connections/refresh_governed_connections.py
 ```
 
@@ -206,7 +215,7 @@ uv run python governance_controls/test_edge_connections/refresh_governed_connect
 
 ## Testing
 
-The repository features a unified test suite using `pytest` with support for integration tests. All tests require real Collibra credentials configured in `.env`.
+The repository includes a comprehensive test suite that validates both the SDK and governance controls against a live Collibra instance. All tests require real credentials configured in `.env`.
 
 ```bash
 # Run all tests (SDK + governance controls)
@@ -218,37 +227,37 @@ uv run pytest --cov=collibra_client --cov-report=term-missing
 
 ### Test Categories
 
-| Category | Path | What it Tests |
-|----------|------|---------------|
-| SDK Core | `tests/integration/core/` | Config validation, OAuth connection, client setup |
-| Catalog API | `tests/integration/catalog/` | Database connection listing, refresh, metadata |
-| Governance Controls | `tests/integration/governance_controls/` | Orchestrator workflows, all CLI modes |
+| Category | Path | What it Validates |
+|----------|------|-------------------|
+| SDK Core | `tests/integration/core/` | Config validation, OAuth authentication, client setup |
+| Catalog API | `tests/integration/catalog/` | Connection listing, refresh, metadata retrieval |
+| Governance Controls | `tests/integration/governance_controls/` | Orchestrator workflows, all enforcement modes |
 
 ### Running Specific Tests
 
 ```bash
-# SDK config and connection tests
+# SDK authentication and configuration
 uv run pytest tests/integration/core/ -v
 
-# Database connection API tests
+# Connection management API
 uv run pytest tests/integration/catalog/test_database_connections.py -v
 
-# Governance orchestrator tests (all CLI modes)
+# Governance orchestrator (all enforcement modes)
 uv run pytest tests/integration/governance_controls/test_edge_connections/test_orchestrator.py -v
 
-# Run a single test
+# Single test
 uv run pytest tests/integration/governance_controls/test_edge_connections/test_orchestrator.py::test_orchestrator_test_individual_connections -v
 ```
 
 ### Quick Verification
 
-Before running the full test suite, verify your authentication is working:
+Before running the full suite, verify authentication:
 
 ```bash
 uv run python governance_controls/test_edge_connections/test_connection_simple.py
 ```
 
-See the [SDK Documentation](./collibra_client/README.md) and the [Edge Connection Validation README](./governance_controls/test_edge_connections/README.md) for detailed testing instructions.
+See the [SDK Documentation](./collibra_client/README.md) and the [Connection Validation Control](./governance_controls/test_edge_connections/README.md) for detailed testing instructions.
 
 ---
 
@@ -273,7 +282,7 @@ ruff check --fix
 mypy collibra_client --ignore-missing-imports
 ```
 
-### Project Structure
+### Standards
 
 - **Line length**: 100 characters (enforced by black and ruff)
 - **Python version**: 3.9+ (supports 3.9, 3.10, 3.11, 3.12)
@@ -282,14 +291,17 @@ mypy collibra_client --ignore-missing-imports
 
 ---
 
-## Future Roadmap
+## Governance Controls Roadmap
 
-The platform is built for extensibility. Planned enhancements include:
+The platform is built to host a growing library of automated governance controls. Each control addresses a specific governance risk:
 
-- **Additional Controls**: Lineage verification, metadata completeness, data quality alerts
-- **Enhanced SDK**: Expanded REST v2.0 endpoint coverage, improved GraphQL utilities
-- **CI/CD Integration**: GitHub Actions workflows for automated governance validation
-- **Notification Channels**: Email, Slack, and Teams integration for owner alerts
+| Planned Control | Governance Risk It Addresses |
+|----------------|------------------------------|
+| **Lineage Verification** | Automated lineage jobs may silently stop updating, creating invisible gaps in data provenance |
+| **Ownership Drift Detection** | Assets accumulate without defined owners, leaving governance gaps when incidents occur |
+| **Classification Audit** | Sensitive data assets may lack proper classification labels, creating compliance exposure |
+| **Schema Drift Monitoring** | Source schemas change without notice, causing downstream pipeline failures and stale metadata |
+| **Metadata Completeness** | Required governance fields (description, owner, domain) are left empty, degrading catalog usefulness |
 
 ---
 
@@ -355,9 +367,9 @@ A: Yes, the SDK supports both Collibra Cloud and on-premise installations. Just 
 A: The SDK is compatible with Collibra 2024.x and later. Some features may require specific versions - check the API documentation.
 
 **Q: Should I use OAuth 2.0 or Basic Authentication?**
-A: **OAuth 2.0 is recommended** for most use cases because:
+A: **OAuth 2.0 is recommended** for governance automation because:
 - More secure (tokens expire, can be revoked)
-- Better for automation and CI/CD
+- Better for scheduled and CI/CD-driven enforcement
 - Supports all Collibra APIs
 - Automatic token refresh
 
@@ -395,12 +407,12 @@ class CustomHandler(NotificationHandler):
 ### Governance Controls Questions
 
 **Q: How do I add a new governance control?**
-A: See the [Governance Controls README](./governance_controls/README.md) for the framework architecture and patterns to follow.
+A: See the [Governance Controls Documentation](./governance_controls/README.md) for the framework architecture and patterns to follow.
 
 **Q: Can I schedule controls to run automatically?**
 A: Yes, use cron (Linux/Mac) or Task Scheduler (Windows):
 ```bash
-# Run daily at 2 AM
+# Enforce governance daily at 2 AM
 0 2 * * * cd /path/to/project && uv run python governance_controls/test_edge_connections/refresh_governed_connections.py
 ```
 
