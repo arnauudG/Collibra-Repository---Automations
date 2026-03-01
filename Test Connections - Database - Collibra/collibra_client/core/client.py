@@ -9,13 +9,12 @@ import json
 from typing import Any, Optional, Union
 
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-
-from collibra_client.core.auth import CollibraAuthenticator
+from collibra_client.core.auth import Authenticator, BasicAuthenticator, CollibraAuthenticator
 from collibra_client.core.exceptions import (
     CollibraAPIError,
 )
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 
 class CollibraClient:
@@ -63,32 +62,81 @@ class CollibraClient:
     def __init__(
         self,
         base_url: str,
-        client_id: str,
-        client_secret: str,
+        client_id: Optional[str] = None,
+        client_secret: Optional[str] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
         timeout: int = DEFAULT_TIMEOUT,
-        authenticator: Optional[CollibraAuthenticator] = None,
+        authenticator: Optional[Authenticator] = None,
+        session_name: Optional[str] = None,
     ):
         """
         Initialize the Collibra client.
 
+        You can authenticate using one of three methods:
+        1. Provide a pre-configured authenticator instance
+        2. Provide OAuth credentials (client_id and client_secret)
+        3. Provide Basic Auth credentials (username and password)
+
         Args:
             base_url: Base URL of the Collibra instance
-            client_id: OAuth client ID
-            client_secret: OAuth client secret
+            client_id: OAuth client ID (for OAuth 2.0 authentication)
+            client_secret: OAuth client secret (for OAuth 2.0 authentication)
+            username: Username (for Basic Authentication)
+            password: Password (for Basic Authentication)
             timeout: Request timeout in seconds
             authenticator: Optional pre-configured authenticator instance
                           (useful for dependency injection)
+            session_name: Optional name for tagging valid tokens (OAuth only)
+
+        Raises:
+            ValueError: If no valid authentication credentials are provided
+
+        Examples:
+            OAuth 2.0:
+            >>> client = CollibraClient(
+            ...     base_url="https://instance.collibra.com",
+            ...     client_id="your_client_id",
+            ...     client_secret="your_client_secret"
+            ... )
+
+            Basic Auth:
+            >>> client = CollibraClient(
+            ...     base_url="https://instance.collibra.com",
+            ...     username="your_username",
+            ...     password="your_password"
+            ... )
         """
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.session_name = session_name
 
-        # Use provided authenticator or create a new one
-        self._authenticator = authenticator or CollibraAuthenticator(
-            base_url=base_url,
-            client_id=client_id,
-            client_secret=client_secret,
-            timeout=timeout,
-        )
+        # Determine which authentication method to use
+        if authenticator:
+            # Use provided authenticator
+            self._authenticator = authenticator
+        elif client_id and client_secret:
+            # Use OAuth 2.0
+            self._authenticator = CollibraAuthenticator(
+                base_url=base_url,
+                client_id=client_id,
+                client_secret=client_secret,
+                timeout=timeout,
+                session_name=self.session_name,
+            )
+        elif username and password:
+            # Use Basic Authentication
+            self._authenticator = BasicAuthenticator(
+                username=username,
+                password=password,
+            )
+        else:
+            raise ValueError(
+                "Authentication required. Provide either:\n"
+                "  - client_id and client_secret (OAuth 2.0), or\n"
+                "  - username and password (Basic Auth), or\n"
+                "  - a pre-configured authenticator instance"
+            )
 
         # Configure session with retry strategy
         self._session = requests.Session()
@@ -97,17 +145,22 @@ class CollibraClient:
             backoff_factor=1,
             status_forcelist=[429, 500, 502, 503, 504],
         )
-        adapter = HTTPAdapter(max_retries=retry_strategy)
+        adapter = HTTPAdapter(
+            max_retries=retry_strategy,
+            pool_connections=25,
+            pool_maxsize=25,
+        )
         self._session.mount("https://", adapter)
         self._session.mount("http://", adapter)
 
     def _get_headers(self, additional_headers: Optional[dict[str, str]] = None) -> dict[str, str]:
         """
-        Get request headers with authentication token.
+        Get request headers with authentication.
 
         This private method constructs HTTP headers for API requests, including
-        the Authorization header with the current access token. Additional headers
-        can be merged in, with additional headers taking precedence.
+        the Authorization header with the appropriate authentication method
+        (OAuth Bearer token or Basic Auth). Additional headers can be merged in,
+        with additional headers taking precedence.
 
         Args:
             additional_headers: Optional dictionary of additional headers to include.
@@ -117,9 +170,9 @@ class CollibraClient:
             Dictionary containing all headers including Authorization, Content-Type,
             and Accept headers, merged with any additional headers provided.
         """
-        token = self._authenticator.get_access_token()
+        auth_header = self._authenticator.get_auth_header()
         headers = {
-            "Authorization": f"Bearer {token}",
+            "Authorization": auth_header,
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
@@ -183,9 +236,9 @@ class CollibraClient:
         try:
             response = self._session.request(method, url, **request_kwargs)
 
-            # Handle authentication errors - try refreshing token once
+            # Handle authentication errors - try refreshing credentials once
             if response.status_code == 401:
-                self._authenticator.invalidate_token()
+                self._authenticator.invalidate()
                 request_headers = self._get_headers(headers)
                 request_kwargs["headers"] = request_headers
                 response = self._session.request(method, url, **request_kwargs)
@@ -200,9 +253,7 @@ class CollibraClient:
             if e.response:
                 try:
                     response_body = e.response.json()
-                    error_message = response_body.get(
-                        "message", response_body.get("error", str(e))
-                    )
+                    error_message = response_body.get("message", response_body.get("error", str(e)))
                 except (ValueError, json.JSONDecodeError):
                     response_body = e.response.text
                     error_message = response_body or str(e)
@@ -300,6 +351,48 @@ class CollibraClient:
             headers=headers,
         )
         return response.json()
+
+    def post_graphql(
+        self,
+        endpoint: str,
+        query: str,
+        variables: Optional[dict[str, Any]] = None,
+        operation_name: Optional[str] = None,
+        headers: Optional[dict[str, str]] = None,
+    ) -> dict[str, Any]:
+        """
+        Make a POST request with a GraphQL payload to the Collibra API.
+
+        Args:
+            endpoint: API endpoint path (e.g., "/edge/api/graphql").
+            query: The GraphQL query or mutation string.
+            variables: Optional dictionary of variables for the query.
+            operation_name: Optional name of the operation to execute.
+            headers: Optional dictionary of additional HTTP headers to include.
+
+        Returns:
+            JSON response parsed as a dictionary.
+
+        Raises:
+            CollibraAPIError: If the API request fails or returns GraphQL errors.
+        """
+        payload: dict[str, Any] = {"query": query}
+        if variables is not None:
+            payload["variables"] = variables
+        if operation_name is not None:
+            payload["operationName"] = operation_name
+
+        response = self.post(endpoint, json_data=payload, headers=headers)
+
+        if "errors" in response and response["errors"]:
+            err_msg = response["errors"][0].get("message", "Unknown GraphQL Error")
+            raise CollibraAPIError(
+                f"GraphQL query failed with errors: {err_msg}",
+                status_code=200,
+                response_body=json.dumps(response),
+            )
+
+        return response
 
     def put(
         self,
@@ -404,32 +497,51 @@ class CollibraClient:
         """
         Get the status of a job by its ID.
 
-        This method retrieves the current status of an asynchronous job
-        that was started by another API call (e.g., connection refresh).
+        This method retrieves the current status of an asynchronous job.
+        It attempts the standard /rest/jobs/v1/jobs endpoint first.
+        If a 404 is encountered, consider using get_edge_job_status() 
+        in calling code.
 
         Args:
             job_id: UUID of the job to check.
 
         Returns:
-            Dictionary containing job status information, including:
-            - id: Job ID
-            - status: Job status (e.g., "RUNNING", "SUCCESS", "FAILED")
-            - progress: Progress percentage (0-100)
-            - message: Status message
-            - startDate: Job start timestamp
-            - endDate: Job end timestamp (if completed)
-            - error: Error details (if failed)
-
-        Raises:
-            CollibraAPIError: If the API request fails.
-
-        Examples:
-            >>> job_status = client.get_job_status("job-uuid")
-            >>> print(f"Job status: {job_status['status']}")
-            >>> print(f"Progress: {job_status.get('progress', 0)}%")
+            Dictionary containing job status information.
         """
         endpoint = f"/rest/jobs/v1/jobs/{job_id}"
         return self.get(endpoint)
+
+    def get_edge_job_status(self, job_id: str) -> dict[str, Any]:
+        """
+        Get the status of an Edge job using the GraphQL API.
+
+        This is used specifically for jobs initiated via the Edge GraphQL API
+        (like connection tests) which may not be visible in the standard
+        REST job endpoints.
+
+        Args:
+            job_id: UUID of the job to check.
+
+        Returns:
+            Dictionary containing job status (e.g., {"status": "SUCCESS", "message": "..."})
+        """
+        query = """
+        query TestConnectionStatus($jobId: ID!) {
+          job: jobById(id: $jobId) {
+            status
+            message
+          }
+        }
+        """
+        variables = {"jobId": job_id}
+        result = self.post_graphql(
+            "/edge/api/graphql", 
+            query, 
+            variables=variables, 
+            operation_name="TestConnectionStatus"
+        )
+        # Unwrap the data part and return just the job info
+        return result.get("data", {}).get("job") or {}
 
     def get_user(self, user_id: str) -> dict[str, Any]:
         """
@@ -460,4 +572,3 @@ class CollibraClient:
         """
         endpoint = f"/rest/2.0/users/{user_id}"
         return self.get(endpoint)
-

@@ -26,24 +26,35 @@ class CollibraConfig:
     1. Direct initialization with parameters
     2. Loading from environment variables (with optional parameter overrides)
 
+    Authentication methods (choose one):
+    - OAuth 2.0: Provide client_id and client_secret
+    - Basic Auth: Provide username and password
+
     Attributes:
         base_url: Base URL of the Collibra instance.
-        client_id: OAuth client ID for authentication.
-        client_secret: OAuth client secret for authentication.
-        basic_auth_username: Optional username for Basic Authentication (for Catalog API).
-        basic_auth_password: Optional password for Basic Authentication (for Catalog API).
+        client_id: OAuth client ID for authentication (OAuth 2.0).
+        client_secret: OAuth client secret for authentication (OAuth 2.0).
+        username: Username for Basic Authentication.
+        password: Password for Basic Authentication.
         timeout: Request timeout in seconds (default: 30).
 
     Examples:
-        >>> # From environment variables
+        >>> # OAuth from environment variables
         >>> config = CollibraConfig.from_env()
         >>>
-        >>> # Direct initialization
+        >>> # OAuth direct initialization
         >>> config = CollibraConfig(
         ...     base_url="https://instance.collibra.com",
         ...     client_id="client_id",
         ...     client_secret="client_secret",
         ...     timeout=60
+        ... )
+        >>>
+        >>> # Basic Auth direct initialization
+        >>> config = CollibraConfig(
+        ...     base_url="https://instance.collibra.com",
+        ...     username="your_username",
+        ...     password="your_password"
         ... )
     """
 
@@ -52,8 +63,8 @@ class CollibraConfig:
         base_url: Optional[str] = None,
         client_id: Optional[str] = None,
         client_secret: Optional[str] = None,
-        basic_auth_username: Optional[str] = None,
-        basic_auth_password: Optional[str] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
         timeout: int = 30,
     ):
         """
@@ -63,12 +74,15 @@ class CollibraConfig:
         variables if not provided. Direct parameters take precedence over
         environment variables.
 
+        You must provide either OAuth credentials (client_id + client_secret)
+        OR Basic Auth credentials (username + password).
+
         Args:
             base_url: Collibra base URL. If None, loads from COLLIBRA_BASE_URL env var.
             client_id: OAuth client ID. If None, loads from COLLIBRA_CLIENT_ID env var.
             client_secret: OAuth client secret. If None, loads from COLLIBRA_CLIENT_SECRET env var.
-            basic_auth_username: Basic Auth username. If None, loads from COLLIBRA_BASIC_AUTH_USERNAME env var.
-            basic_auth_password: Basic Auth password. If None, loads from COLLIBRA_BASIC_AUTH_PASSWORD env var.
+            username: Username for Basic Auth. If None, loads from COLLIBRA_USERNAME env var.
+            password: Password for Basic Auth. If None, loads from COLLIBRA_PASSWORD env var.
             timeout: Request timeout in seconds. Defaults to 30.
 
         Raises:
@@ -78,8 +92,8 @@ class CollibraConfig:
         self.base_url = base_url or os.getenv("COLLIBRA_BASE_URL")
         self.client_id = client_id or os.getenv("COLLIBRA_CLIENT_ID")
         self.client_secret = client_secret or os.getenv("COLLIBRA_CLIENT_SECRET")
-        self.basic_auth_username = basic_auth_username or os.getenv("COLLIBRA_BASIC_AUTH_USERNAME")
-        self.basic_auth_password = basic_auth_password or os.getenv("COLLIBRA_BASIC_AUTH_PASSWORD")
+        self.username = username or os.getenv("COLLIBRA_USERNAME")
+        self.password = password or os.getenv("COLLIBRA_PASSWORD")
         self.timeout = timeout
 
         self._validate()
@@ -88,8 +102,9 @@ class CollibraConfig:
         """
         Validate that required configuration values are present.
 
-        Checks that base_url, client_id, and client_secret are all set.
-        Raises ValueError with a descriptive message if any are missing.
+        Checks that base_url is set and that either OAuth credentials
+        (client_id + client_secret) OR Basic Auth credentials (username + password)
+        are provided.
 
         Raises:
             ValueError: If any required configuration value is missing.
@@ -100,16 +115,45 @@ class CollibraConfig:
                 "Set COLLIBRA_BASE_URL environment variable or pass base_url parameter."
             )
 
-        if not self.client_id:
+        # Check if OAuth credentials are provided
+        has_oauth = self.client_id and self.client_secret
+        # Check if Basic Auth credentials are provided
+        has_basic = self.username and self.password
+
+        if not has_oauth and not has_basic:
             raise ValueError(
-                "Collibra client ID is required. "
-                "Set COLLIBRA_CLIENT_ID environment variable or pass client_id parameter."
+                "Authentication credentials required. Provide either:\n"
+                "  OAuth 2.0:\n"
+                "    - COLLIBRA_CLIENT_ID and COLLIBRA_CLIENT_SECRET, or\n"
+                "    - client_id and client_secret parameters\n"
+                "  Basic Auth:\n"
+                "    - COLLIBRA_USERNAME and COLLIBRA_PASSWORD, or\n"
+                "    - username and password parameters"
             )
 
-        if not self.client_secret:
+        # Warn if partial credentials are provided
+        if self.client_id and not self.client_secret:
             raise ValueError(
-                "Collibra client secret is required. "
-                "Set COLLIBRA_CLIENT_SECRET environment variable or pass client_secret parameter."
+                "Incomplete OAuth credentials: client_secret is missing. "
+                "Both client_id and client_secret are required for OAuth 2.0."
+            )
+
+        if self.client_secret and not self.client_id:
+            raise ValueError(
+                "Incomplete OAuth credentials: client_id is missing. "
+                "Both client_id and client_secret are required for OAuth 2.0."
+            )
+
+        if self.username and not self.password:
+            raise ValueError(
+                "Incomplete Basic Auth credentials: password is missing. "
+                "Both username and password are required for Basic Authentication."
+            )
+
+        if self.password and not self.username:
+            raise ValueError(
+                "Incomplete Basic Auth credentials: username is missing. "
+                "Both username and password are required for Basic Authentication."
             )
 
     @classmethod
@@ -123,8 +167,10 @@ class CollibraConfig:
 
         Required environment variables:
         - COLLIBRA_BASE_URL: Base URL of the Collibra instance
-        - COLLIBRA_CLIENT_ID: OAuth client ID
-        - COLLIBRA_CLIENT_SECRET: OAuth client secret
+
+        Authentication (choose one method):
+        - OAuth 2.0: COLLIBRA_CLIENT_ID and COLLIBRA_CLIENT_SECRET
+        - Basic Auth: COLLIBRA_USERNAME and COLLIBRA_PASSWORD
 
         Args:
             timeout: Request timeout in seconds. Defaults to 30.
@@ -136,14 +182,17 @@ class CollibraConfig:
             ValueError: If any required environment variable is missing.
 
         Examples:
-            >>> # Set environment variables first
+            >>> # OAuth 2.0
             >>> import os
             >>> os.environ["COLLIBRA_BASE_URL"] = "https://instance.collibra.com"
             >>> os.environ["COLLIBRA_CLIENT_ID"] = "client_id"
             >>> os.environ["COLLIBRA_CLIENT_SECRET"] = "client_secret"
+            >>> config = CollibraConfig.from_env()
             >>>
-            >>> # Load configuration
-            >>> config = CollibraConfig.from_env(timeout=60)
+            >>> # Basic Auth
+            >>> os.environ["COLLIBRA_BASE_URL"] = "https://instance.collibra.com"
+            >>> os.environ["COLLIBRA_USERNAME"] = "username"
+            >>> os.environ["COLLIBRA_PASSWORD"] = "password"
+            >>> config = CollibraConfig.from_env()
         """
         return cls(timeout=timeout)
-

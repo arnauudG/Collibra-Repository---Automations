@@ -1,22 +1,51 @@
 """
-OAuth 2.0 authentication module for Collibra API.
+Authentication module for Collibra API.
 
-This module handles token acquisition, storage, and refresh logic
-following the OAuth 2.0 client credentials flow.
+This module supports two authentication methods:
+1. OAuth 2.0 client credentials flow (CollibraAuthenticator)
+2. Basic Authentication with username/password (BasicAuthenticator)
 """
 
+import base64
+import threading
 import time
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional
 
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-
 from collibra_client.core.exceptions import (
     CollibraAuthenticationError,
     CollibraTokenError,
 )
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+
+class Authenticator(ABC):
+    """
+    Abstract base class for authentication methods.
+
+    All authenticators must implement get_auth_header() to provide
+    the appropriate Authorization header value for API requests.
+    """
+
+    @abstractmethod
+    def get_auth_header(self) -> str:
+        """
+        Get the Authorization header value.
+
+        Returns:
+            Authorization header value (e.g., "Bearer <token>" or "Basic <credentials>")
+        """
+        pass
+
+    @abstractmethod
+    def invalidate(self) -> None:
+        """
+        Invalidate cached credentials, forcing refresh on next request.
+        """
+        pass
 
 
 @dataclass
@@ -49,6 +78,7 @@ class TokenInfo:
     token_type: str
     expires_in: int
     issued_at: float
+    session_name: Optional[str] = None
 
     @property
     def is_expired(self) -> bool:
@@ -77,7 +107,7 @@ class TokenInfo:
         return self.issued_at + self.expires_in
 
 
-class CollibraAuthenticator:
+class CollibraAuthenticator(Authenticator):
     """
     Handles OAuth 2.0 client credentials authentication for Collibra API.
 
@@ -117,6 +147,7 @@ class CollibraAuthenticator:
         client_id: str,
         client_secret: str,
         timeout: int = 30,
+        session_name: Optional[str] = None,
     ):
         """
         Initialize the authenticator.
@@ -131,7 +162,9 @@ class CollibraAuthenticator:
         self.client_id = client_id
         self.client_secret = client_secret
         self.timeout = timeout
+        self.session_name = session_name
         self._token: Optional[TokenInfo] = None
+        self._lock = threading.Lock()
 
         # Configure session with retry strategy
         self._session = requests.Session()
@@ -143,6 +176,19 @@ class CollibraAuthenticator:
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self._session.mount("https://", adapter)
         self._session.mount("http://", adapter)
+
+    def get_auth_header(self) -> str:
+        """
+        Get the Authorization header value with Bearer token.
+
+        Returns:
+            Authorization header value in format "Bearer <token>"
+
+        Raises:
+            CollibraAuthenticationError: If token acquisition fails
+        """
+        token = self.get_access_token()
+        return f"Bearer {token}"
 
     def get_access_token(self, force_refresh: bool = False) -> str:
         """
@@ -157,13 +203,14 @@ class CollibraAuthenticator:
         Raises:
             CollibraAuthenticationError: If token acquisition fails
         """
-        if force_refresh or not self._token or self._token.is_expired:
-            self._acquire_token()
+        with self._lock:
+            if force_refresh or not self._token or self._token.is_expired:
+                self._acquire_token()
 
-        if not self._token:
-            raise CollibraTokenError("Failed to acquire access token")
+            if not self._token:
+                raise CollibraTokenError("Failed to acquire access token")
 
-        return self._token.access_token
+            return self._token.access_token
 
     def _acquire_token(self) -> None:
         """
@@ -199,6 +246,7 @@ class CollibraAuthenticator:
                 token_type=token_data.get("token_type", "Bearer"),
                 expires_in=int(token_data.get("expires_in", 3600)),
                 issued_at=time.time(),
+                session_name=self.session_name,
             )
 
         except requests.exceptions.HTTPError as e:
@@ -225,19 +273,15 @@ class CollibraAuthenticator:
                     except ValueError:
                         error_message = e.response.text or error_message
 
-            raise CollibraAuthenticationError(
-                error_message, status_code=status_code
-            ) from e
+            raise CollibraAuthenticationError(error_message, status_code=status_code) from e
 
         except requests.exceptions.RequestException as e:
-            raise CollibraAuthenticationError(
-                f"Network error during token acquisition: {e}"
-            ) from e
+            raise CollibraAuthenticationError(f"Network error during token acquisition: {e}") from e
 
         except (KeyError, ValueError) as e:
             raise CollibraTokenError(f"Invalid token response format: {e}") from e
 
-    def invalidate_token(self) -> None:
+    def invalidate(self) -> None:
         """
         Invalidate the current token, forcing a refresh on next request.
 
@@ -250,11 +294,19 @@ class CollibraAuthenticator:
         - Testing token refresh logic
 
         Examples:
-            >>> authenticator.invalidate_token()
+            >>> authenticator.invalidate()
             >>> # Next call will acquire a new token
             >>> token = authenticator.get_access_token()
         """
         self._token = None
+
+    def invalidate_token(self) -> None:
+        """
+        Deprecated: Use invalidate() instead.
+
+        Maintained for backward compatibility.
+        """
+        self.invalidate()
 
     def get_token_info(self) -> Optional[TokenInfo]:
         """
@@ -273,3 +325,73 @@ class CollibraAuthenticator:
         """
         return self._token
 
+
+class BasicAuthenticator(Authenticator):
+    """
+    Handles Basic Authentication with username and password for Collibra API.
+
+    This authenticator uses HTTP Basic Authentication by encoding username:password
+    in Base64 format. Unlike OAuth, Basic Auth doesn't require token management
+    as credentials are sent with each request.
+
+    Basic Auth is supported by:
+    - Catalog Database Registration API
+    - Some legacy Collibra endpoints
+
+    Note: OAuth 2.0 is the recommended authentication method for most use cases.
+
+    Attributes:
+        username: Collibra username
+        password: Collibra password
+
+    Examples:
+        >>> authenticator = BasicAuthenticator(
+        ...     username="your_username",
+        ...     password="your_password"
+        ... )
+        >>> auth_header = authenticator.get_auth_header()
+        >>> print(f"Authorization: {auth_header}")
+    """
+
+    def __init__(self, username: str, password: str):
+        """
+        Initialize the Basic Auth authenticator.
+
+        Args:
+            username: Collibra username
+            password: Collibra password
+
+        Raises:
+            ValueError: If username or password is empty
+        """
+        if not username or not password:
+            raise ValueError("Username and password are required for Basic Authentication")
+
+        self.username = username
+        self.password = password
+        self._lock = threading.Lock()
+
+    def get_auth_header(self) -> str:
+        """
+        Get the Authorization header value with Basic Auth credentials.
+
+        Returns:
+            Authorization header value in format "Basic <base64_credentials>"
+
+        Examples:
+            >>> auth_header = authenticator.get_auth_header()
+            >>> # Returns: "Basic dXNlcm5hbWU6cGFzc3dvcmQ="
+        """
+        with self._lock:
+            credentials = f"{self.username}:{self.password}"
+            encoded = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+            return f"Basic {encoded}"
+
+    def invalidate(self) -> None:
+        """
+        No-op for Basic Auth as there are no cached credentials to invalidate.
+
+        This method exists to implement the Authenticator interface but doesn't
+        perform any action for Basic Auth since credentials are not cached.
+        """
+        pass  # Basic auth doesn't cache, so nothing to invalidate
