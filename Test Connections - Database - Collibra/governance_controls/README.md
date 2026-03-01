@@ -2,6 +2,16 @@
 
 The `governance_controls` package provides automated governance controls built on top of the `collibra_client` SDK. Each control is designed to be modular, independently executable, and audit-ready.
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Business Value](#business-value)
+- [The Automation Bridge](#the-automation-bridge)
+- [Available Controls](#available-controls)
+- [Planned Controls](#planned-controls)
+- [Design Principles](#design-principles)
+- [Usage](#usage)
+
 ## Overview
 
 This framework bridges the gap between governance metadata in Collibra and the operational reality of your data infrastructure. It enables organizations to:
@@ -15,17 +25,17 @@ This framework bridges the gap between governance metadata in Collibra and the o
 
 ```mermaid
 graph TD
-    subgraph "Collibra (Policy Layer)"
+    subgraph Policy["Collibra - Policy Layer"]
         M[Governance Metadata]
         A[Accountability]
     end
 
-    subgraph "Governance Controls (Execution Layer)"
+    subgraph Execution["Governance Controls - Execution Layer"]
         C[Individual Controls]
         R[Reporting & Alerts]
     end
 
-    subgraph "Infrastructure (Reality Layer)"
+    subgraph Reality["Infrastructure - Reality Layer"]
         E[Edge Sites]
         D[Data Sources]
     end

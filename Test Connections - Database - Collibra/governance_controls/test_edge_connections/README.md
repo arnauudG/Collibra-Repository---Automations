@@ -2,6 +2,17 @@
 
 This control validates the connectivity of data sources registered in Collibra Edge Sites. It automatically tests connections, monitors job status, and notifies owners when failures occur.
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Business Value](#business-value)
+- [How it Works: The Governance Control Loop](#how-it-works-the-governance-control-loop)
+- [Architecture](#architecture)
+- [Usage](#usage)
+- [Notification System](#notification-system)
+- [Configuration Options](#configuration-options)
+- [Key Features](#key-features)
+
 ## Overview
 
 In enterprise Collibra environments, data source connectivity can break silently due to credential expiration, network changes, or infrastructure updates. This control provides proactive validation:
@@ -33,22 +44,21 @@ This control implements an automated feedback loop between your physical data in
 
 ```mermaid
 graph TD
-    subgraph "Governance & Accountability (Collibra Cloud)"
-        Asset["Database Asset<br/>(Catalog)"]
-        Owner["Accountable Owner<br/>(Steward/Admin)"]
+    subgraph Cloud["Governance & Accountability - Collibra Cloud"]
+        Asset[Database Asset - Catalog]
+        Owner[Accountable Owner - Steward/Admin]
     end
 
-    subgraph "Operational Integrity Layer (governance_controls)"
-        Control[["Validation Control<br/>(test_edge_connections)"]]
-        Logic["Impact & Ownership<br/>Mapping Logic"]
+    subgraph Controls["Operational Integrity Layer - governance_controls"]
+        Control[Validation Control - test_edge_connections]
+        Logic[Impact & Ownership Mapping Logic]
     end
 
-    subgraph "Infrastructure (Hybrid Security)"
-        Edge["Collibra Edge Site"]
-        Source[("Data Source<br/>(Snowflake/S3/etc.)")]
+    subgraph Infra["Infrastructure - Hybrid Security"]
+        Edge[Collibra Edge Site]
+        Source[(Data Source - Snowflake/S3/etc)]
     end
 
-    %% The Flow of Purpose
     Control -->|1. Trigger Test| Edge
     Edge <-->|2. Connectivity Probe| Source
     Edge -.->|3. Report Failure| Control
@@ -58,7 +68,8 @@ graph TD
     Control -->|7. Send Alert| Owner
     Owner -.->|8. Fix Connection| Source
 ```
-*Figure 1: The end-to-end control loop ensuring that technical failures are mapped to business accountability.*
+
+**The Control Loop**: Technical failures are automatically detected, analyzed for business impact, mapped to the correct asset owners, and routed for remediation.
 
 ## Architecture
 

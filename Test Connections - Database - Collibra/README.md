@@ -1,6 +1,28 @@
 # Collibra Governance Automation Platform
 
-A unified platform for building and running automated governance controls in Collibra. This repository is structured into two main pillars: a reusable SDK for Collibra API interactions and a modular framework for specific governance automations.
+[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/downloads/)
+[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+A unified platform for building and running automated governance controls in Collibra. This repository provides a production-ready SDK for Collibra API interactions and a modular framework for governance automation.
+
+**Key Capabilities:**
+- OAuth 2.0 authentication with automatic token management
+- Catalog Database API integration for connection management
+- GraphQL support for Edge operations
+- Automated governance controls with owner notifications
+- Comprehensive test suite with integration tests
+
+## Table of Contents
+
+- [Architecture Overview](#architecture-overview)
+- [The Governance Bridge](#the-governance-bridge)
+- [Repository Structure](#repository-structure)
+- [Quick Start](#quick-start)
+- [Testing](#testing)
+- [Development](#development)
+- [Future Roadmap](#future-roadmap)
+- [License](#license)
 
 ## Architecture Overview
 
@@ -36,17 +58,17 @@ The platform operates as an operational integrity layer, bridging the gap betwee
 
 ```mermaid
 graph LR
-    subgraph "Business Context (Collibra Cloud)"
+    subgraph Cloud["Business Context - Collibra Cloud"]
         P[Policies & Metadata]
         O[Accountable Owners]
     end
 
-    subgraph "Operational Layer (Automation)"
+    subgraph Automation["Operational Layer - Automation"]
         SDK[collibra_client SDK]
         CTRL[governance_controls]
     end
 
-    subgraph "Technical Reality (Infrastructure)"
+    subgraph Infrastructure["Technical Reality - Infrastructure"]
         E[Collibra Edge]
         D[(Data Sources)]
     end
@@ -57,7 +79,8 @@ graph LR
     CTRL -->|3. Map to Policy| P
     CTRL -->|4. Notify on Failure| O
 ```
-*Figure 1: High-level overview of how the platform translates technical health into governance compliance.*
+
+**How it works**: The platform validates technical reality (data source connectivity) and maps failures to governance policies, automatically notifying accountable owners when issues arise.
 
 ---
 
@@ -65,18 +88,40 @@ graph LR
 
 ```
 .
-├── collibra_client/          # Reusable Python SDK
-│   ├── core/                 # Auth, Auth Client, Config
-│   ├── catalog/              # Catalog Database Manager
-│   └── notifications/        # Reusable alert patterns
-├── governance_controls/      # Automated Controls Framework
-│   └── test_edge_connections/# Control: Edge Connectivity Validation
-│       ├── logic/            # Modular business logic
-│       └── README.md         # Detailed control documentation
-├── tests/                    # Unified test suite (Core, Catalog, Controls)
-├── governed_connections.yaml # Global configuration for governed scope
-├── .env                      # Local environment credentials
-└── pyproject.toml            # Project dependencies (uv/pip)
+├── collibra_client/              # Reusable Python SDK
+│   ├── core/                     # Authentication, HTTP client, config
+│   │   ├── auth.py              # OAuth 2.0 token management
+│   │   ├── client.py            # HTTP client with retry logic
+│   │   ├── config.py            # Environment-based configuration
+│   │   └── exceptions.py        # Custom exception hierarchy
+│   ├── catalog/                  # Catalog Database API operations
+│   │   └── connections.py       # Database connection management
+│   └── README.md                # SDK documentation
+│
+├── governance_controls/          # Automated Controls Framework
+│   ├── test_edge_connections/   # Edge Connection Validation Control
+│   │   ├── logic/               # Modular business logic
+│   │   │   ├── orchestrator.py # Main workflow coordinator
+│   │   │   ├── poller.py       # Job status polling
+│   │   │   ├── reporter.py     # Report generation
+│   │   │   ├── impact_mapper.py # Owner mapping logic
+│   │   │   └── heuristic.py    # Connection filtering
+│   │   ├── notifications/       # Notification handlers
+│   │   ├── governed_connections.yaml # Edge Site configuration
+│   │   └── README.md           # Control documentation
+│   └── README.md                # Controls framework documentation
+│
+├── tests/                        # Test suite
+│   ├── integration/             # Integration tests
+│   │   ├── core/               # SDK core tests
+│   │   ├── catalog/            # Catalog API tests
+│   │   └── governance_controls/ # Control tests
+│   └── conftest.py              # Pytest configuration
+│
+├── .env.example                  # Environment template
+├── pyproject.toml               # Dependencies and tooling
+├── CLAUDE.md                    # AI assistant guidance
+└── README.md                    # This file
 ```
 
 ---

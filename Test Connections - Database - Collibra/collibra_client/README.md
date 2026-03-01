@@ -2,6 +2,17 @@
 
 A production-ready, reusable Python library for interacting with Collibra's REST and GraphQL APIs. This SDK is designed to be standalone and can be extracted for use in other projects or governance automations.
 
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Module Structure](#module-structure)
+- [Usage Examples](#usage-examples)
+- [Testing](#testing)
+- [Configuration](#configuration)
+- [Advanced Features](#advanced-features)
+
 ## Features
 
 ### Authentication
