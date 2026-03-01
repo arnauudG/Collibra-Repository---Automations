@@ -21,7 +21,11 @@ A unified platform for building and running automated governance controls in Col
 - [Quick Start](#quick-start)
 - [Testing](#testing)
 - [Development](#development)
+- [Troubleshooting](#troubleshooting)
+- [FAQ](#faq)
+- [Support](#support)
 - [Future Roadmap](#future-roadmap)
+- [Changelog](#changelog)
 - [License](#license)
 
 ## Architecture Overview
@@ -233,6 +237,150 @@ The platform is built for extensibility. Planned enhancements include:
 
 ---
 
+## Troubleshooting
+
+### Common Issues
+
+#### OAuth Authentication Fails
+
+**Problem**: "Authentication failed" or 401 errors
+
+**Solutions**:
+1. Verify credentials in `.env` are correct
+2. Check that OAuth application is active in Collibra (Settings → OAuth Applications)
+3. Ensure `COLLIBRA_BASE_URL` doesn't have trailing slash
+4. Clear token cache: `rm -rf ~/.collibra/token_cache/`
+
+#### Connection Tests Fail
+
+**Problem**: "Connection test failed (no error details provided)"
+
+**Explanation**: This is often due to:
+- Network connectivity issues between Edge and data source
+- Expired or invalid credentials in Collibra connection settings
+- Firewall blocking the connection
+
+**Solutions**:
+1. Verify the connection works in Collibra UI (Settings → Edge → Connections → Test)
+2. Check Edge logs for detailed error messages
+3. Verify network connectivity from Edge to data source
+4. Update credentials in Collibra connection settings
+
+#### Rate Limiting
+
+**Problem**: 429 Too Many Requests errors
+
+**Solutions**:
+1. The SDK automatically retries with exponential backoff
+2. Reduce `max_workers` in orchestrator (default: 3)
+3. Add delays between operations
+4. Contact Collibra support to increase rate limits
+
+#### Import Errors
+
+**Problem**: `ModuleNotFoundError` when running scripts
+
+**Solutions**:
+1. Ensure you're using `uv run python` instead of just `python`
+2. Verify installation: `uv sync`
+3. Check you're in the correct directory
+4. Activate virtual environment manually if needed: `source .venv/bin/activate`
+
+---
+
+## FAQ
+
+### General Questions
+
+**Q: Can I use this with Collibra on-premise?**
+A: Yes, the SDK supports both Collibra Cloud and on-premise installations. Just set your on-premise URL in `COLLIBRA_BASE_URL`.
+
+**Q: What Collibra version is required?**
+A: The SDK is compatible with Collibra 2024.x and later. Some features may require specific versions - check the API documentation.
+
+**Q: Can I use Basic Auth instead of OAuth?**
+A: Yes, the Catalog Database API supports both. Set `use_oauth=False` and provide username/password to `DatabaseConnectionManager`.
+
+**Q: Is this officially supported by Collibra?**
+A: This is a community project. For official support, contact Collibra directly.
+
+### SDK Questions
+
+**Q: How do I handle pagination?**
+A: Use the `limit` and `offset` parameters in list methods:
+```python
+connections = db_manager.list_database_connections(limit=100, offset=0)
+```
+
+**Q: Can I use this in production?**
+A: Yes, the SDK is production-ready with comprehensive error handling, retry logic, and testing. However, test thoroughly in your environment first.
+
+**Q: How do I add custom notification handlers?**
+A: Extend the `NotificationHandler` abstract class:
+```python
+class CustomHandler(NotificationHandler):
+    def notify(self, connection, error_message, owner_info):
+        # Your custom notification logic
+        return True
+```
+
+### Governance Controls Questions
+
+**Q: How do I add a new governance control?**
+A: See the [Governance Controls README](./governance_controls/README.md) for the framework architecture and patterns to follow.
+
+**Q: Can I schedule controls to run automatically?**
+A: Yes, use cron (Linux/Mac) or Task Scheduler (Windows):
+```bash
+# Run daily at 2 AM
+0 2 * * * cd /path/to/project && uv run python governance_controls/test_edge_connections/refresh_governed_connections.py
+```
+
+**Q: How do I customize the notification messages?**
+A: Modify the notification handler or create a custom one. See `governance_controls/test_edge_connections/notifications/handlers.py`.
+
+---
+
+## Support
+
+### Getting Help
+
+- **Documentation**: Start with the [README files](./README.md) in each module
+- **Issues**: Report bugs or request features via [GitHub Issues](https://github.com/arnauudG/Collibra-Repository---Automations/issues)
+- **Discussions**: Ask questions in [GitHub Discussions](https://github.com/arnauudG/Collibra-Repository---Automations/discussions)
+- **Collibra Community**: Visit the [Collibra Community](https://community.collibra.com/) for Collibra-specific questions
+
+### Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for:
+- Development setup instructions
+- Coding standards and style guide
+- Testing requirements
+- Pull request process
+
+### Reporting Security Issues
+
+If you discover a security vulnerability, please **do not** open a public issue. Instead:
+1. Email the maintainers privately
+2. Include detailed steps to reproduce
+3. Wait for confirmation before disclosing publicly
+
+---
+
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for detailed version history and release notes.
+
+---
+
+## Acknowledgments
+
+- Built with the [Collibra REST API](https://developer.collibra.com/)
+- Inspired by the Collibra community's governance automation needs
+- Thanks to all contributors who have helped improve this project
+
+---
+
 ## License
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
