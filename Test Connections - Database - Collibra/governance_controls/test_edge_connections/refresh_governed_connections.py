@@ -1,26 +1,36 @@
 """
-Test database connections for a governed set of edge_connection_ids.
+Test database connections for Collibra Edge Sites or specific connections.
+
+Supports four execution modes with priority order:
+1. Edge Site + Connection IDs (contextual testing)
+2. Connection IDs only (direct testing)
+3. Edge Site IDs only (batch testing)
+4. YAML config file (governed scope)
 
 Usage:
-    # Using CLI arguments (recommended)
+    # Test specific connections within an Edge Site context
+    python refresh_governed_connections.py --edge-site-id <edge-id> --connection-id <conn-id1> --connection-id <conn-id2>
+
+    # Test specific connections directly
+    python refresh_governed_connections.py --connection-id <conn-id1> --connection-id <conn-id2>
+
+    # Test all connections under Edge Sites
     python refresh_governed_connections.py --edge-site-id <id1> --edge-site-id <id2>
 
-    # Using YAML config file
+    # Use YAML config file
     python refresh_governed_connections.py --yaml-config governed_connections.yaml
 
-    # Using default YAML file (backward compatible)
+    # Use default YAML file (backward compatible)
     python refresh_governed_connections.py
 
-The script calls the Catalog refresh API for each edge_connection_id, waits for each
-refresh job to complete, then notifies owners of failed connections and prints a summary report.
+The script tests connections, polls job status, maps failures to impacted assets,
+notifies owners, and prints a summary report.
 """
 
 import argparse
 import logging
 import os
 import sys
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 # Add project root to path for imports
@@ -43,23 +53,19 @@ logger = logging.getLogger(__name__)
 
 try:
     from collibra_client import (
-        CollibraAPIError,
         CollibraClient,
         CollibraConfig,
         DatabaseConnectionManager,
     )
-    from governance_controls.test_edge_connections.connection_monitor import ConnectionMonitor
     from governance_controls.test_edge_connections.governed_config import load_governed_config
-    from governance_controls.test_edge_connections.notifications import ConsoleNotificationHandler
+    from governance_controls.test_edge_connections.logic.orchestrator import GovernanceOrchestrator
+    from governance_controls.test_edge_connections.notifications.handlers import (
+        ConsoleNotificationHandler,
+    )
 except ImportError as e:
     logger.error("Error importing collibra_client: %s", e)
     logger.info("Make sure dependencies are installed: pip install requests python-dotenv pyyaml")
     sys.exit(1)
-
-
-from governance_controls.test_edge_connections.logic.orchestrator import GovernanceOrchestrator
-from governance_controls.test_edge_connections.governed_config import load_governed_config
-from governance_controls.test_edge_connections.notifications.handlers import ConsoleNotificationHandler
 
 
 def parse_arguments():
@@ -69,7 +75,14 @@ def parse_arguments():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Test specific Edge Sites by ID
+  # Test specific connections within an Edge Site context
+  %(prog)s --edge-site-id 7d343ace-eecf-4c8c-af2c-3420280e6a2d \\
+           --connection-id abc123 --connection-id def456
+
+  # Test specific connections by ID (no Edge Site context)
+  %(prog)s --connection-id abc123-uuid --connection-id def456-uuid
+
+  # Test all connections under specific Edge Sites
   %(prog)s --edge-site-id 7d343ace-eecf-4c8c-af2c-3420280e6a2d
 
   # Test multiple Edge Sites
@@ -80,7 +93,19 @@ Examples:
 
   # Use default YAML config (backward compatible)
   %(prog)s
+
+Priority: (--edge-site-id + --connection-id) > --connection-id > --edge-site-id > --yaml-config
+
+Note: Only one --edge-site-id can be specified when using --connection-id
         """
+    )
+
+    parser.add_argument(
+        "--connection-id",
+        action="append",
+        dest="connection_ids",
+        metavar="ID",
+        help="Individual connection ID to test (can be specified multiple times)"
     )
 
     parser.add_argument(
@@ -146,9 +171,55 @@ def main():
 
         db_manager = DatabaseConnectionManager(client=client, use_oauth=True)
 
-        # Determine governed scope: CLI args take precedence over YAML
-        if args.edge_site_ids:
-            # Use Edge Site IDs from CLI arguments
+        # Instantiate Orchestrator
+        orchestrator = GovernanceOrchestrator(
+            client=client,
+            db_manager=db_manager,
+            notification_handler=ConsoleNotificationHandler(),
+            max_workers=args.max_workers,
+            poll_delay=args.poll_delay,
+            job_timeout=args.job_timeout
+        )
+
+        # Determine execution mode
+        # Priority: (edge_site + connection) > connection IDs only > edge site IDs > YAML
+        if args.edge_site_ids and args.connection_ids:
+            # Mode 1: Test specific connections within an Edge Site context
+            if len(args.edge_site_ids) > 1:
+                logger.error(
+                    "Error: Only one --edge-site-id can be specified when using --connection-id"
+                )
+                logger.info("To test multiple Edge Sites, omit --connection-id")
+                return 1
+
+            edge_site_id = args.edge_site_ids[0]
+            logger.info("Using Edge Site context with specific connection IDs")
+            logger.info("Edge Site: %s", edge_site_id)
+            logger.info("Testing %d specific connection(s)", len(args.connection_ids))
+
+            metadata = {
+                edge_site_id: {
+                    "name": f"Edge Site {edge_site_id[:8]}...",
+                    "description": "Provided via CLI",
+                    "environment": "unknown",
+                    "owner_team": "unknown"
+                }
+            }
+
+            orchestrator.test_connections_in_edge_site(
+                edge_site_id=edge_site_id,
+                connection_ids=args.connection_ids,
+                edge_metadata=metadata
+            )
+
+        elif args.connection_ids:
+            # Mode 2: Test individual connections without Edge Site context
+            logger.info("Using connection IDs from command-line arguments")
+            logger.info("Testing %d connection(s)", len(args.connection_ids))
+            orchestrator.test_individual_connections(args.connection_ids)
+
+        elif args.edge_site_ids:
+            # Mode 3: Test all connections under Edge Sites
             logger.info("Using Edge Site IDs from command-line arguments")
             governed_edge_ids = args.edge_site_ids
             # Create simple metadata for CLI-provided IDs
@@ -161,8 +232,11 @@ def main():
                 }
                 for edge_id in governed_edge_ids
             }
+            logger.info("Testing %d Edge Site(s)", len(governed_edge_ids))
+            orchestrator.run(governed_edge_ids, metadata)
+
         else:
-            # Load from YAML config file
+            # Mode 4: Use YAML config
             yaml_path = args.yaml_config if args.yaml_config else None
             logger.info("Loading governed scope from YAML configuration...")
 
@@ -170,28 +244,16 @@ def main():
                 governed_edge_ids, metadata = load_governed_config(yaml_path)
             except FileNotFoundError as e:
                 logger.error(str(e))
-                logger.info("TIP: Provide Edge Site IDs via --edge-site-id argument")
+                logger.info("TIP: Provide Edge Site IDs via --edge-site-id or connection IDs via --connection-id")
                 return 1
 
             if not governed_edge_ids:
                 logger.error("No governed edge connection IDs found in YAML config.")
-                logger.info("TIP: Provide Edge Site IDs via --edge-site-id argument")
+                logger.info("TIP: Provide Edge Site IDs via --edge-site-id or connection IDs via --connection-id")
                 return 1
 
-        logger.info("Testing %d Edge Site(s)", len(governed_edge_ids))
-
-        # Instantiate Orchestrator
-        orchestrator = GovernanceOrchestrator(
-            client=client,
-            db_manager=db_manager,
-            notification_handler=ConsoleNotificationHandler(),
-            max_workers=args.max_workers,
-            poll_delay=args.poll_delay,
-            job_timeout=args.job_timeout
-        )
-
-        # Run workflow
-        orchestrator.run(governed_edge_ids, metadata)
+            logger.info("Testing %d Edge Site(s)", len(governed_edge_ids))
+            orchestrator.run(governed_edge_ids, metadata)
 
         return 0
 

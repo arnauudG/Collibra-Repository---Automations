@@ -6,7 +6,6 @@ from collections.abc import Generator
 from functools import wraps
 
 import pytest
-
 from collibra_client import (
     CollibraClient,
     CollibraConfig,
@@ -22,14 +21,21 @@ def handle_rate_limit(func):
     If a test raises CollibraAuthenticationError with a 429 status code,
     the test will be skipped instead of failing.
     """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
         except CollibraAuthenticationError as e:
-            if "429" in str(e) or "Rate limit" in str(e) or "Too Many Requests" in str(e) or (hasattr(e, 'status_code') and e.status_code == 429):
+            if (
+                "429" in str(e)
+                or "Rate limit" in str(e)
+                or "Too Many Requests" in str(e)
+                or (hasattr(e, "status_code") and e.status_code == 429)
+            ):
                 pytest.skip(f"Rate limited: {e}")
             raise
+
     return wrapper
 
 
@@ -86,7 +92,7 @@ def collibra_client(collibra_config: CollibraConfig) -> CollibraClient:
             if "429" in str(e) or "Rate limit" in str(e):
                 if attempt < max_retries - 1:
                     # Exponential backoff: 2^attempt seconds
-                    wait_time = 2 ** attempt
+                    wait_time = 2**attempt
                     time.sleep(wait_time)
                     continue
             # If not rate limit or max retries reached, let it fail
@@ -144,9 +150,9 @@ def db_manager(collibra_client: CollibraClient) -> DatabaseConnectionManager:
 def pytest_configure(config):
     """Configure pytest with custom markers."""
     config.addinivalue_line(
-        "markers", "integration: marks tests as integration tests (require actual Collibra credentials)"
+        "markers",
+        "integration: marks tests as integration tests (require actual Collibra credentials)",
     )
     config.addinivalue_line(
         "markers", "rate_limit: marks tests that may be skipped due to rate limiting"
     )
-

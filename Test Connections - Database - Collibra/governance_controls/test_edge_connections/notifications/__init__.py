@@ -5,13 +5,13 @@ This module provides functionality to notify database connection owners
 when their database connection refresh fails (e.g. due to credential changes).
 """
 
-from collibra_client.notifications.handlers import (
+from governance_controls.test_edge_connections.notifications.handlers import (
     CollibraNotificationHandler,
     ConsoleNotificationHandler,
     EmailNotificationHandler,
     NotificationHandler,
 )
-from collibra_client.notifications.owner import get_connection_owner
+from governance_controls.test_edge_connections.notifications.owner import get_connection_owner
 
 __all__ = [
     "NotificationHandler",

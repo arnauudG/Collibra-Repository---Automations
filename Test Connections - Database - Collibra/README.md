@@ -178,40 +178,77 @@ uv run python governance_controls/test_edge_connections/test_connection_simple.p
 
 ### Run Your First Control
 
-Execute the Edge Connection Validation control:
+Execute the Edge Connection Validation control using one of four methods:
 
 ```bash
-# Test a specific Edge Site by ID
+# Method 1: Test specific connections within an Edge Site (contextual testing)
+uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
+  --edge-site-id 7d343ace-eecf-4c8c-af2c-3420280e6a2d \
+  --connection-id abc123 --connection-id def456
+
+# Method 2: Test specific connections by ID (direct testing)
+uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
+  --connection-id abc123-connection-uuid
+
+# Method 3: Test all connections under an Edge Site (batch testing)
 uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
   --edge-site-id 7d343ace-eecf-4c8c-af2c-3420280e6a2d
 
-# Or use YAML configuration file
+# Method 4: Use YAML configuration file (governed scope)
 uv run python governance_controls/test_edge_connections/refresh_governed_connections.py
 ```
 
-To find your Edge Site ID: Navigate to Collibra → Settings → Edge → Sites. The ID is in the URL.
+**Finding IDs**:
+- **Connection ID**: Collibra → Settings → Edge → Sites → [Select Site] → Connections (ID in URL)
+- **Edge Site ID**: Collibra → Settings → Edge → Sites (ID in URL)
 
 ---
 
 ## Testing
 
-The repository features a unified test suite using `pytest` with support for integration tests.
+The repository features a unified test suite using `pytest` with support for integration tests. All tests require real Collibra credentials configured in `.env`.
 
 ```bash
-# Run all tests
-uv run pytest
-
-# Run integration tests only
-uv run pytest -m integration
+# Run all tests (SDK + governance controls)
+uv run pytest -v
 
 # Run with coverage
 uv run pytest --cov=collibra_client --cov-report=term-missing
-
-# Run specific test file
-uv run pytest tests/integration/catalog/test_database_connections.py
 ```
 
-See the [SDK Documentation](./collibra_client/README.md) for detailed testing instructions.
+### Test Categories
+
+| Category | Path | What it Tests |
+|----------|------|---------------|
+| SDK Core | `tests/integration/core/` | Config validation, OAuth connection, client setup |
+| Catalog API | `tests/integration/catalog/` | Database connection listing, refresh, metadata |
+| Governance Controls | `tests/integration/governance_controls/` | Orchestrator workflows, all CLI modes |
+
+### Running Specific Tests
+
+```bash
+# SDK config and connection tests
+uv run pytest tests/integration/core/ -v
+
+# Database connection API tests
+uv run pytest tests/integration/catalog/test_database_connections.py -v
+
+# Governance orchestrator tests (all CLI modes)
+uv run pytest tests/integration/governance_controls/test_edge_connections/test_orchestrator.py -v
+
+# Run a single test
+uv run pytest tests/integration/governance_controls/test_edge_connections/test_orchestrator.py::test_orchestrator_test_individual_connections -v
+```
+
+### Quick Verification
+
+Before running the full test suite, verify your authentication is working:
+
+```bash
+uv run python governance_controls/test_edge_connections/test_connection_simple.py
+```
+
+See the [SDK Documentation](./collibra_client/README.md) and the [Edge Connection Validation README](./governance_controls/test_edge_connections/README.md) for detailed testing instructions.
 
 ---
 

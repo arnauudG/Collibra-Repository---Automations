@@ -81,5 +81,3 @@ def get_connection_owner(
         # Asset not found or other error
         return None
 
-    return None
-

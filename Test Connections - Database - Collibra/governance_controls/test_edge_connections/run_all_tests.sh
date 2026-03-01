@@ -1,10 +1,13 @@
 #!/bin/bash
-# Run all test scripts sequentially with delays to avoid rate limits
+# Run all utility test scripts sequentially with delays to avoid rate limits.
+#
+# Usage:
+#   bash governance_controls/test_edge_connections/run_all_tests.sh
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$PROJECT_DIR"
 
@@ -22,17 +25,17 @@ NC='\033[0m' # No Color
 run_script() {
     local script_name=$1
     local description=$2
-    
+
     echo -e "${YELLOW}Running: $script_name${NC}"
     echo "Description: $description"
     echo "----------------------------------------"
-    
-    if python3 "$SCRIPT_DIR/$script_name"; then
+
+    if uv run python "$SCRIPT_DIR/$script_name"; then
         echo -e "${GREEN}✓ $script_name completed successfully${NC}"
     else
         echo -e "${YELLOW}⚠ $script_name had issues (may be due to rate limits)${NC}"
     fi
-    
+
     echo ""
     echo "Waiting 10 seconds before next script..."
     sleep 10
@@ -46,4 +49,3 @@ echo ""
 echo "============================================================"
 echo "All scripts completed!"
 echo "============================================================"
-

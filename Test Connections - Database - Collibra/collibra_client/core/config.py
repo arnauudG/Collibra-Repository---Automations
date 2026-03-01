@@ -115,32 +115,16 @@ class CollibraConfig:
                 "Set COLLIBRA_BASE_URL environment variable or pass base_url parameter."
             )
 
-        # Check if OAuth credentials are provided
-        has_oauth = self.client_id and self.client_secret
-        # Check if Basic Auth credentials are provided
-        has_basic = self.username and self.password
-
-        if not has_oauth and not has_basic:
-            raise ValueError(
-                "Authentication credentials required. Provide either:\n"
-                "  OAuth 2.0:\n"
-                "    - COLLIBRA_CLIENT_ID and COLLIBRA_CLIENT_SECRET, or\n"
-                "    - client_id and client_secret parameters\n"
-                "  Basic Auth:\n"
-                "    - COLLIBRA_USERNAME and COLLIBRA_PASSWORD, or\n"
-                "    - username and password parameters"
-            )
-
-        # Warn if partial credentials are provided
+        # Check for partial credentials first (more specific errors)
         if self.client_id and not self.client_secret:
             raise ValueError(
-                "Incomplete OAuth credentials: client_secret is missing. "
+                "Incomplete OAuth credentials: client secret is missing. "
                 "Both client_id and client_secret are required for OAuth 2.0."
             )
 
         if self.client_secret and not self.client_id:
             raise ValueError(
-                "Incomplete OAuth credentials: client_id is missing. "
+                "Incomplete OAuth credentials: client ID is missing. "
                 "Both client_id and client_secret are required for OAuth 2.0."
             )
 
@@ -154,6 +138,21 @@ class CollibraConfig:
             raise ValueError(
                 "Incomplete Basic Auth credentials: username is missing. "
                 "Both username and password are required for Basic Authentication."
+            )
+
+        # Check if any complete credential set is provided
+        has_oauth = self.client_id and self.client_secret
+        has_basic = self.username and self.password
+
+        if not has_oauth and not has_basic:
+            raise ValueError(
+                "Authentication credentials required. Provide either:\n"
+                "  OAuth 2.0:\n"
+                "    - COLLIBRA_CLIENT_ID and COLLIBRA_CLIENT_SECRET, or\n"
+                "    - client_id and client_secret parameters\n"
+                "  Basic Auth:\n"
+                "    - COLLIBRA_USERNAME and COLLIBRA_PASSWORD, or\n"
+                "    - username and password parameters"
             )
 
     @classmethod

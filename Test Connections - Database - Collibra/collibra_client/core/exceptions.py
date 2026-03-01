@@ -106,4 +106,3 @@ class CollibraTokenError(CollibraAuthenticationError):
     """
 
     pass
-

@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 # Add project root to path for imports
-project_root = Path(__file__).parent.parent
+project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 _LOG_FORMAT = "%(asctime)s [%(levelname)s] %(message)s"
@@ -34,8 +34,8 @@ try:
         CollibraClient,
         CollibraConfig,
         DatabaseConnectionManager,
-        load_governed_config,
     )
+    from governance_controls.test_edge_connections.governed_config import load_governed_config
 except ImportError as e:
     logger.error("Error importing collibra_client: %s", e)
     logger.info("Make sure dependencies are installed: pip install requests python-dotenv pyyaml")
@@ -160,7 +160,7 @@ def test_list_database_connections():
             logger.error("Error fetching database connections: %s", error_msg)
             if "401" in error_msg or "Unauthorized" in error_msg:
                 logger.warning(
-                    "Authentication failed (401). Check COLLIBRA_BASIC_AUTH_* credentials."
+                    "Authentication failed (401). Check your credentials in .env"
                 )
             elif "403" in error_msg or "Forbidden" in error_msg:
                 logger.warning(
@@ -173,8 +173,8 @@ def test_list_database_connections():
     except ValueError as e:
         logger.error("Configuration error: %s", e)
         logger.info(
-            "Ensure COLLIBRA_BASE_URL, COLLIBRA_CLIENT_ID, COLLIBRA_CLIENT_SECRET, "
-            "COLLIBRA_BASIC_AUTH_USERNAME, COLLIBRA_BASIC_AUTH_PASSWORD are set."
+            "Ensure COLLIBRA_BASE_URL and either OAuth (COLLIBRA_CLIENT_ID, COLLIBRA_CLIENT_SECRET) "
+            "or Basic Auth (COLLIBRA_USERNAME, COLLIBRA_PASSWORD) credentials are set."
         )
         return False
 

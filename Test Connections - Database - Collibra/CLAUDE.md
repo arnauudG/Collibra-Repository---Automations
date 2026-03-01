@@ -63,7 +63,19 @@ isort . --profile black --line-length=100
 
 ### Running Governance Controls
 ```bash
-# Execute the Edge Connection Testing control
+# Test specific connections within an Edge Site context (contextual testing)
+uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
+  --edge-site-id <edge-site-uuid> --connection-id <conn-uuid1> --connection-id <conn-uuid2>
+
+# Test specific connections directly (direct testing)
+uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
+  --connection-id <conn-uuid1> --connection-id <conn-uuid2>
+
+# Test all connections under Edge Sites (batch testing)
+uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
+  --edge-site-id <edge-site-uuid>
+
+# Use YAML config (governed scope - default)
 uv run python governance_controls/test_edge_connections/refresh_governed_connections.py
 ```
 
@@ -166,8 +178,10 @@ Many Collibra operations are asynchronous and return job IDs:
 ## Configuration Files
 
 **`.env`** (not committed):
-- Required: `COLLIBRA_BASE_URL`, `COLLIBRA_CLIENT_ID`, `COLLIBRA_CLIENT_SECRET`
-- Optional: `COLLIBRA_BASIC_AUTH_USERNAME`, `COLLIBRA_BASIC_AUTH_PASSWORD`, `COLLIBRA_TIMEOUT`
+- Required: `COLLIBRA_BASE_URL`
+- OAuth 2.0: `COLLIBRA_CLIENT_ID`, `COLLIBRA_CLIENT_SECRET`
+- Basic Auth: `COLLIBRA_USERNAME`, `COLLIBRA_PASSWORD`
+- Optional: `COLLIBRA_TIMEOUT`, `COLLIBRA_LOG_FILE`
 
 **`governed_connections.yaml`** (version-controlled):
 - Located in `governance_controls/test_edge_connections/`

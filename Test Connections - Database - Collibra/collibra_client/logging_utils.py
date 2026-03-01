@@ -8,10 +8,10 @@ import sys
 # ANSI codes (safe to use; reset is always appended)
 _RESET = "\033[0m"
 _LEVEL_COLORS = {
-    logging.DEBUG: "\033[36m",    # cyan
-    logging.INFO: "\033[32m",     # green
+    logging.DEBUG: "\033[36m",  # cyan
+    logging.INFO: "\033[32m",  # green
     logging.WARNING: "\033[33m",  # yellow
-    logging.ERROR: "\033[31m",    # red
+    logging.ERROR: "\033[31m",  # red
 }
 
 

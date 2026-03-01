@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 import requests
-
 from collibra_client.core.client import CollibraClient
 from collibra_client.core.exceptions import CollibraAPIError
 
@@ -119,21 +118,6 @@ class DatabaseConnectionManager:
             encoded = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
             return f"Basic {encoded}"
 
-    def _get_basic_auth_header(self) -> str:
-        """
-        Generate Basic Authentication header value.
-
-        Deprecated: Use _get_auth_header() instead.
-
-        Returns:
-            Base64-encoded Basic Auth header value.
-        """
-        if not self.username or not self.password:
-            raise ValueError("Basic Auth credentials (username/password) are required")
-        credentials = f"{self.username}:{self.password}"
-        encoded = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
-        return f"Basic {encoded}"
-
     def _make_basic_auth_request(
         self,
         method: str,
@@ -165,7 +149,7 @@ class DatabaseConnectionManager:
         }
 
         url = f"{self.client.base_url}{endpoint}"
-        request_kwargs = {
+        request_kwargs: dict[str, Any] = {
             "headers": headers,
             "timeout": self.client.timeout,
         }
@@ -199,9 +183,7 @@ class DatabaseConnectionManager:
                 response_body=response_body,
             ) from e
         except requests.exceptions.RequestException as e:
-            raise CollibraAPIError(
-                f"Network error during database API request: {e}"
-            ) from e
+            raise CollibraAPIError(f"Network error during database API request: {e}") from e
 
     def list_database_connections(
         self,
@@ -249,9 +231,9 @@ class DatabaseConnectionManager:
         if schema_connection_id:
             params["schemaConnectionId"] = schema_connection_id
         if limit > 0:
-            params["limit"] = min(limit, 500)  # Enforce max limit
+            params["limit"] = str(min(limit, 500))  # Enforce max limit
         if offset > 0:
-            params["offset"] = offset
+            params["offset"] = str(offset)
 
         response = self._make_basic_auth_request("GET", endpoint, params=params)
         results = response.get("results", [])
@@ -288,6 +270,154 @@ class DatabaseConnectionManager:
         params = {"edgeConnectionId": edge_connection_id}
         return self._make_basic_auth_request("POST", endpoint, params=params)
 
+    def test_edge_connection(self, edge_connection_id: str) -> str:
+        """
+        Explicitly run a connection test on an Edge connection via GraphQL.
+
+        This uses the Edge API's native capability to explicitly verify the connection.
+
+        Args:
+            edge_connection_id: UUID of the Edge connection to test (required).
+
+        Returns:
+            The job ID string for tracking the connection test progress.
+
+        Raises:
+            CollibraAPIError: If the GraphQL request fails.
+
+        Examples:
+            >>> job_id = manager.test_edge_connection(
+            ...     edge_connection_id="edge-uuid"
+            ... )
+        """
+        query = """
+        mutation TestConnection($id: ID!) {
+          job: connectionTestConnection(id: $id) {
+            jobId
+          }
+        }
+        """
+        variables = {"id": edge_connection_id}
+
+        response = self.client.post_graphql(
+            endpoint="/edge/api/graphql",
+            query=query,
+            variables=variables,
+            operation_name="TestConnection",
+        )
+
+        try:
+            return response["data"]["job"]["jobId"]
+        except KeyError as e:
+            raise CollibraAPIError(
+                f"Unexpected structure in GraphQL response when getting jobId: {response}"
+            ) from e
+
+    def get_edge_site_connections(
+        self, edge_site_id: str, limit: int = 50, offset: int = 0
+    ) -> list[dict[str, Any]]:
+        """
+        Fetch all child database connections nested under an Edge Site via GraphQL.
+
+        Args:
+            edge_site_id: UUID of the parent Edge Site.
+            limit: Pagination limit, max 50 default.
+            offset: Pagination offset, default 0.
+
+        Returns:
+            A list of connection dictionaries containing 'id', 'name', and 'description'.
+
+        Raises:
+            CollibraAPIError: If the GraphQL request fails.
+        """
+        query = """
+        query Connections($edgeSiteId: ID!, $offset: Int!, $limit: Int!, $filter: ConnectionFindFilterInput) {
+          edgeSiteConnections: edgeSiteById(id: $edgeSiteId) {
+            id
+            connections(input: {offset: $offset, limit: $limit, filter: $filter}) {
+              limit
+              offset
+              total
+              edges {
+                node {
+                  ...ConnectionResult
+                }
+              }
+            }
+          }
+        }
+
+        fragment ConnectionResult on Connection {
+          id
+          name
+          description
+        }
+        """
+        variables = {"edgeSiteId": edge_site_id, "limit": limit, "offset": offset, "filter": {}}
+
+        response = self.client.post_graphql(
+            endpoint="/edge/api/graphql",
+            query=query,
+            variables=variables,
+            operation_name="Connections",
+        )
+
+        try:
+            site_data = response.get("data", {}).get("edgeSiteConnections")
+            if not site_data:
+                return []
+            edges = site_data.get("connections", {}).get("edges", [])
+            return [edge.get("node", {}) for edge in edges if edge.get("node")]
+        except Exception as e:
+            raise CollibraAPIError(
+                f"Failed to parse Edge Site connections from GraphQL: {response}"
+            ) from e
+
+    def get_connection_detail(self, connection_id: str) -> dict[str, Any]:
+        """
+        Fetch detailed metadata for a specific connection using GraphQL.
+
+        This includes parameters (driver, connection string), vaultId,
+        and family type information.
+
+        Args:
+            connection_id: UUID of the connection.
+
+        Returns:
+            Dictionary containing detailed connection metadata.
+
+        Raises:
+            CollibraAPIError: If the GraphQL request fails.
+        """
+        query = """
+        query ConnectionDetail($connectionId: ID!) {
+          connectionById(id: $connectionId) {
+            id
+            name
+            description
+            vaultId
+            parameters
+            connectionTypeId
+            family
+          }
+        }
+        """
+        variables = {"connectionId": connection_id}
+
+        response = self.client.post_graphql(
+            endpoint="/edge/api/graphql",
+            query=query,
+            variables=variables,
+            operation_name="ConnectionDetail",
+        )
+
+        try:
+            return response.get("data", {}).get("connectionById") or {}
+        except Exception as e:
+            raise CollibraAPIError(
+                f"Failed to parse Connection Details from GraphQL: {response}"
+            ) from e
+
     def get_database_connection_by_id(self, connection_id: str) -> Optional[DatabaseConnection]:
         """
         Get a specific database connection by ID.
@@ -299,70 +429,16 @@ class DatabaseConnectionManager:
             DatabaseConnection if found, None otherwise.
 
         Raises:
-            CollibraAPIError: If the API request fails.
+            CollibraAPIError: If the API request fails (except 404).
         """
-        connections = self.list_database_connections()
-        for conn in connections:
-            if conn.id == connection_id:
-                return conn
-        return None
-
-    def test_database_connection(self, connection_id: str) -> dict[str, Any]:
-        """
-        Test a database connection by attempting to refresh it.
-
-        This method tests if a database connection is still valid by attempting
-        to refresh it. If the refresh fails due to credential issues, it indicates
-        that the connection refresh has failed.
-
-        Args:
-            connection_id: UUID of the database connection to test.
-
-        Returns:
-            Dictionary containing test results with 'success' and 'message' keys.
-
-        Raises:
-            CollibraAPIError: If the test operation fails.
-
-        Examples:
-            >>> result = manager.test_database_connection("connection-uuid")
-            >>> if not result.get("success"):
-            ...     print(f"Connection test failed: {result.get('message')}")
-        """
-        connection = self.get_database_connection_by_id(connection_id)
-        if not connection:
-            return {
-                "success": False,
-                "message": f"Database connection {connection_id} not found",
-                "connection_id": connection_id,
-            }
-
+        endpoint = f"{self.CATALOG_API_BASE}/databaseConnections/{connection_id}"
         try:
-            # Attempt to refresh the connection
-            self.refresh_database_connections(edge_connection_id=connection.edge_connection_id)
-            return {
-                "success": True,
-                "message": "Database connection test successful",
-                "connection_id": connection_id,
-                "connection_name": connection.name,
-            }
+            response = self._make_basic_auth_request("GET", endpoint)
+            return DatabaseConnection.from_dict(response)
         except CollibraAPIError as e:
-            # Check if error is related to authentication/credentials
-            error_message = str(e).lower()
-            is_credential_error = any(
-                keyword in error_message
-                for keyword in ["authentication", "credential", "password", "unauthorized", "forbidden"]
-            )
-
-            return {
-                "success": False,
-                "message": f"Database connection test failed: {e}",
-                "connection_id": connection_id,
-                "connection_name": connection.name,
-                "error": str(e),
-                "status_code": e.status_code,
-                "is_credential_error": is_credential_error,
-            }
+            if e.status_code == 404:
+                return None
+            raise e
 
     def synchronize_database_metadata(self, database_id: str) -> dict[str, Any]:
         """
@@ -419,4 +495,3 @@ class DatabaseConnectionManager:
         """
         endpoint = f"{self.CATALOG_API_BASE}/databases/{database_id}"
         return self._make_basic_auth_request("GET", endpoint)
-

@@ -248,9 +248,9 @@ COLLIBRA_CLIENT_SECRET=your_client_secret
 # Optional: Request timeout (default: 30 seconds)
 COLLIBRA_TIMEOUT=30
 
-# Optional: Basic Auth for Catalog API (if not using OAuth)
-COLLIBRA_BASIC_AUTH_USERNAME=your_username
-COLLIBRA_BASIC_AUTH_PASSWORD=your_password
+# Optional: Basic Auth (alternative to OAuth)
+COLLIBRA_USERNAME=your_username
+COLLIBRA_PASSWORD=your_password
 ```
 
 ## Advanced Features

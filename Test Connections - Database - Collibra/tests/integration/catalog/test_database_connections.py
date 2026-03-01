@@ -18,6 +18,8 @@ from typing import Any, Optional
 
 import pytest
 
+from governance_controls.test_edge_connections.connection_monitor import ConnectionMonitor
+
 from collibra_client import (
     CollibraClient,
     DatabaseConnection,

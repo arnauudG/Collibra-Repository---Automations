@@ -1,3 +1,15 @@
+---
+tags: []
+
+category: Documentation
+type: data/readme
+complexity: intermediate
+time_required: 15-30 minutes
+created: 2026-02-18
+status: active
+last_updated: 2026-02-18
+---
+
 # Collibra Repository - Features & Automations
 
 This repository contains various projects and automations for Collibra Data Intelligence Cloud.
@@ -55,4 +67,3 @@ Each project maintains its own code quality standards and testing requirements. 
 ## License
 
 MIT
-

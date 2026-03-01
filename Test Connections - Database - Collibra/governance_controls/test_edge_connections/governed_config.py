@@ -50,13 +50,16 @@ def load_governed_config(
         )
 
     if path is None:
-        path = os.getenv("COLLIBRA_GOVERNED_CONNECTIONS_CONFIG", "governed_connections.yaml")
+        path = os.getenv(
+            "COLLIBRA_GOVERNED_CONNECTIONS_CONFIG", 
+            Path(__file__).parent / "governed_connections.yaml"
+        )
     path = Path(path)
     if not path.is_absolute():
         path = Path.cwd() / path
 
     if not path.exists():
-        raise FileNotFoundError(f"Governed connections config not found: {path}")
+        raise FileNotFoundError(f"Governed connections config not found: {path.absolute()}")
 
     with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)

@@ -66,12 +66,13 @@ Every control execution generates a structured audit trail with timestamps, resu
 Validates data source connectivity for governed Edge Sites, ensuring that Collibra can successfully connect to registered data sources.
 
 **Key Features**:
-- Tests all connections under specified Edge Sites
+- Four execution modes: contextual testing, direct testing, batch testing, governed scope
+- Tests connections within Edge Sites or specific connections by ID
 - Polls job status with timeout handling
 - Maps failures to database assets and owners
 - Generates structured reports and notifications
 
-**Business Impact**: Prevents profiling and lineage failures by catching connectivity issues early. Automatically notifies owners when connections break.
+**Business Impact**: Prevents profiling and lineage failures by catching connectivity issues early. Automatically notifies owners when connections break. Enables both targeted troubleshooting and comprehensive governance validation.
 
 👉 [View Detailed Documentation](./test_edge_connections/README.md)
 
@@ -118,10 +119,22 @@ Each execution generates:
 
 ### Running a Control
 
-Each control has its own entry point. For example:
+Each control has its own entry point with multiple execution modes. For example, the Edge Connection Validation control:
 
 ```bash
-# Run Edge Connection Validation
+# Contextual testing: Test specific connections within an Edge Site
+uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
+  --edge-site-id <edge-site-id> --connection-id <conn-id1> --connection-id <conn-id2>
+
+# Direct testing: Test specific connections by ID
+uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
+  --connection-id <conn-id1> --connection-id <conn-id2>
+
+# Batch testing: Test all connections under Edge Sites
+uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
+  --edge-site-id <edge-site-id>
+
+# Governed scope: Use YAML configuration file (default)
 uv run python governance_controls/test_edge_connections/refresh_governed_connections.py
 ```
 

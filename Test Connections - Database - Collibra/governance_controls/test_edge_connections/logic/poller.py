@@ -78,9 +78,8 @@ class JobPoller:
                 if status_upper in ["FAILED", "ERROR", "CAPABILITY_FAILED", "CANCELLED", "CANCELED"]:
                     return self._handle_failure(job_id, job_status, status_info["message"])
 
-                # Intermediate logging
-                if attempt % 1 == 0:  # Log every attempt for clear terminal progress
-                    logger.info("  [%s] Status: %s", job_id[:8], status_upper)
+                # Intermediate logging (every attempt for clear terminal progress)
+                logger.info("  [%s] Status: %s", job_id[:8], status_upper)
 
                 if attempt < self.max_attempts - 1:
                     time.sleep(self.delay_seconds)

@@ -1,0 +1,10 @@
+# Governed Edge Site IDs – version-controlled; used for multi-connection discovery and testing.
+# Every connection under these Edge Sites will be tested and owners will be notified.
+# Use the Edge Site ID found in the URL: .../settings/edge/sites/<EDGE_SITE_ID>
+
+governed_connections:
+  "7d343ace-eecf-4c8c-af2c-3420280e6a2d":
+    name: "Unified Data Governance - Edge Site"
+    description: "Main development Edge Site governing Snowflake and Databricks endpoints."
+    environment: "development"
+    owner_team: "Data Governance & Engineering Team"

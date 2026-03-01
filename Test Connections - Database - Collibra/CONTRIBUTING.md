@@ -284,17 +284,19 @@ When requesting features, include:
 
 ```
 .
-├── collibra_client/          # Reusable SDK
-│   ├── core/                 # Core functionality
-│   └── catalog/              # Catalog API operations
-├── governance_controls/      # Governance automation framework
-│   └── test_edge_connections/# Connection testing control
-│       ├── logic/            # Business logic modules
-│       └── notifications/    # Notification handlers
-├── tests/                    # Test suite
-│   └── integration/          # Integration tests
-├── docs/                     # Additional documentation
-└── scripts/                  # Utility scripts
+├── collibra_client/              # Reusable SDK
+│   ├── core/                     # Authentication, HTTP client, config, exceptions
+│   └── catalog/                  # Catalog Database API operations
+├── governance_controls/          # Governance automation framework
+│   └── test_edge_connections/    # Connection testing control
+│       ├── logic/                # Business logic (orchestrator, poller, heuristic, etc.)
+│       ├── notifications/        # Notification handlers (console, email, Collibra)
+│       └── *.py                  # Utility/debug scripts (CLI-driven)
+├── tests/                        # Test suite
+│   └── integration/              # Integration tests (mirrors source structure)
+├── pyproject.toml                # Dependencies and tooling config
+├── CLAUDE.md                     # AI assistant guidance
+└── CHANGELOG.md                  # Version history
 ```
 
 ## Additional Resources
