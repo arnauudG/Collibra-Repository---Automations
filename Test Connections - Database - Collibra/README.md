@@ -151,11 +151,22 @@ pip install -e .
 ```bash
 # Copy the example environment file
 cp .env.example .env
+```
 
-# Edit .env with your Collibra credentials:
-# - COLLIBRA_BASE_URL
-# - COLLIBRA_CLIENT_ID
-# - COLLIBRA_CLIENT_SECRET
+Edit `.env` with your Collibra credentials. Choose **one** authentication method:
+
+**Option 1: OAuth 2.0 (Recommended)**
+```bash
+COLLIBRA_BASE_URL=https://your-instance.collibra.com
+COLLIBRA_CLIENT_ID=your_client_id
+COLLIBRA_CLIENT_SECRET=your_client_secret
+```
+
+**Option 2: Basic Authentication**
+```bash
+COLLIBRA_BASE_URL=https://your-instance.collibra.com
+COLLIBRA_USERNAME=your_username
+COLLIBRA_PASSWORD=your_password
 ```
 
 ### Verify Installation
@@ -168,9 +179,17 @@ uv run python governance_controls/test_edge_connections/test_connection_simple.p
 ### Run Your First Control
 
 Execute the Edge Connection Validation control:
+
 ```bash
+# Test a specific Edge Site by ID
+uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
+  --edge-site-id 7d343ace-eecf-4c8c-af2c-3420280e6a2d
+
+# Or use YAML configuration file
 uv run python governance_controls/test_edge_connections/refresh_governed_connections.py
 ```
+
+To find your Edge Site ID: Navigate to Collibra → Settings → Edge → Sites. The ID is in the URL.
 
 ---
 
@@ -298,8 +317,20 @@ A: Yes, the SDK supports both Collibra Cloud and on-premise installations. Just 
 **Q: What Collibra version is required?**
 A: The SDK is compatible with Collibra 2024.x and later. Some features may require specific versions - check the API documentation.
 
-**Q: Can I use Basic Auth instead of OAuth?**
-A: Yes, the Catalog Database API supports both. Set `use_oauth=False` and provide username/password to `DatabaseConnectionManager`.
+**Q: Should I use OAuth 2.0 or Basic Authentication?**
+A: **OAuth 2.0 is recommended** for most use cases because:
+- More secure (tokens expire, can be revoked)
+- Better for automation and CI/CD
+- Supports all Collibra APIs
+- Automatic token refresh
+
+Use **Basic Auth** if:
+- You don't have access to create OAuth applications
+- Working with legacy Collibra instances
+- Need quick setup for testing/development
+
+**Q: Can I switch between OAuth and Basic Auth?**
+A: Yes! Just change your `.env` file or pass different credentials to `CollibraClient`. The SDK automatically detects which authentication method to use.
 
 **Q: Is this officially supported by Collibra?**
 A: This is a community project. For official support, contact Collibra directly.

@@ -43,25 +43,67 @@ pip install -e .
 
 ## Quick Start
 
-```python
-from collibra_client import CollibraClient, CollibraConfig, DatabaseConnectionManager
+### Authentication Methods
 
-# 1. Initialize from Environment
+The SDK supports two authentication methods:
+
+**Method 1: OAuth 2.0 (Recommended)**
+```python
+from collibra_client import CollibraClient
+
+client = CollibraClient(
+    base_url="https://instance.collibra.com",
+    client_id="your_client_id",
+    client_secret="your_client_secret"
+)
+```
+
+**Method 2: Basic Authentication (Username/Password)**
+```python
+from collibra_client import CollibraClient
+
+client = CollibraClient(
+    base_url="https://instance.collibra.com",
+    username="your_username",
+    password="your_password"
+)
+```
+
+**Method 3: From Environment Variables (Auto-detects)**
+```python
+from collibra_client import CollibraClient, CollibraConfig
+
+# Loads either OAuth or Basic Auth from .env
 config = CollibraConfig.from_env()
 
-# 2. Create the Client
 client = CollibraClient(
     base_url=config.base_url,
     client_id=config.client_id,
-    client_secret=config.client_secret
+    client_secret=config.client_secret,
+    username=config.username,
+    password=config.password
 )
+```
 
-# 3. Use specialized managers
+### Basic Usage
+
+```python
+from collibra_client import DatabaseConnectionManager
+
+# Test connection
+if client.test_connection():
+    print("Connected successfully!")
+
+# Get current user
+user = client.get("/rest/2.0/users/current")
+print(f"Logged in as: {user.get('username')}")
+
+# Use database connection manager
 db_manager = DatabaseConnectionManager(client=client)
 connections = db_manager.list_database_connections()
 
-# 4. Or use raw HTTP methods
-user_info = client.get("/rest/2.0/users/current")
+for conn in connections:
+    print(f"{conn.name} (ID: {conn.id})")
 ```
 
 ## Module Structure

@@ -104,9 +104,44 @@ This control uses a modular design for maintainability and testability:
 
 ## Usage
 
-### Configuration
+### Finding Edge Site IDs
 
-Define your governed Edge Sites in `governed_connections.yaml`:
+Navigate to your Collibra instance → Settings → Edge → Sites. The Edge Site ID is in the URL: `.../settings/edge/sites/<EDGE_SITE_ID>`
+
+### Execution Methods
+
+#### Method 1: CLI Arguments (Recommended)
+
+Test specific Edge Sites directly via command-line arguments:
+
+```bash
+# Test a single Edge Site
+uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
+  --edge-site-id 7d343ace-eecf-4c8c-af2c-3420280e6a2d
+
+# Test multiple Edge Sites
+uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
+  --edge-site-id 7d343ace-eecf-4c8c-af2c-3420280e6a2d \
+  --edge-site-id another-edge-site-id
+
+# With custom settings
+uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
+  --edge-site-id 7d343ace-eecf-4c8c-af2c-3420280e6a2d \
+  --max-workers 5 \
+  --poll-delay 3 \
+  --job-timeout 120
+```
+
+**CLI Options**:
+- `--edge-site-id ID`: Edge Site ID to test (can be specified multiple times)
+- `--yaml-config PATH`: Path to YAML configuration file
+- `--max-workers N`: Maximum parallel workers (default: 3)
+- `--poll-delay N`: Seconds between job status polls (default: 5)
+- `--job-timeout N`: Maximum seconds to wait for job completion (default: 60)
+
+#### Method 2: YAML Configuration File
+
+For managing multiple Edge Sites, create `governed_connections.yaml`:
 
 ```yaml
 governed_connections:
@@ -123,18 +158,21 @@ governed_connections:
     owner_team: "Data Engineering Team"
 ```
 
-**Finding Edge Site IDs**: Navigate to your Collibra instance → Settings → Edge → Sites. The Edge Site ID is in the URL: `.../settings/edge/sites/<EDGE_SITE_ID>`
-
-### Execution
-
-Test your OAuth connection first:
+Run with YAML config:
 ```bash
-uv run python governance_controls/test_edge_connections/test_connection_simple.py
+# Use default governed_connections.yaml
+uv run python governance_controls/test_edge_connections/refresh_governed_connections.py
+
+# Use custom YAML file
+uv run python governance_controls/test_edge_connections/refresh_governed_connections.py \
+  --yaml-config /path/to/config.yaml
 ```
 
-Run the full Edge Connection Validation control:
+### Testing Connection First
+
+Verify your authentication is working:
 ```bash
-uv run python governance_controls/test_edge_connections/refresh_governed_connections.py
+uv run python governance_controls/test_edge_connections/test_connection_simple.py
 ```
 
 ### Expected Output
