@@ -7,63 +7,54 @@ complexity: intermediate
 time_required: 15-30 minutes
 created: 2026-02-18
 status: active
-last_updated: 2026-02-18
+last_updated: 2026-03-02
 ---
 
-# Collibra Repository - Features & Automations
+# Collibra governance automations
 
-This repository contains various projects and automations for Collibra Data Intelligence Cloud.
+This repository groups small, Collibra-focused automation projects.
 
 ## Projects
 
-### Database Connection Synchronization & Monitoring
+### Governance automation platform
 
-**Location:** `Test Connections - Database - Collibra/`
+Location: `Test Connections - Database - Collibra/`
 
-An automated tool for testing, synchronizing, and monitoring database metadata synchronization jobs in Collibra. This tool identifies failed database synchronizations, retrieves database owner information, and sends notifications to owners about synchronization failures.
+- Validates Collibra Edge connection health.
+- Produces audit-friendly logs (what was tested, what passed/failed, when).
+- Maps failures to impacted Catalog database assets and their owners.
 
-**Key Features:**
-- Automated metadata synchronization for all cataloged database connections
-- Job status monitoring and failure detection
-- Owner information retrieval from Catalog Database API
-- Automatic notification sending to database owners for failures
-- Comprehensive reporting with owner details
+Start here:
+- [Platform README](Test%20Connections%20-%20Database%20-%20Collibra/README.md)
+- [Controls](Test%20Connections%20-%20Database%20-%20Collibra/governance_controls/README.md)
+- [Connection validation control](Test%20Connections%20-%20Database%20-%20Collibra/governance_controls/test_edge_connections/README.md)
 
-**Quick Start:**
+## Quick start
+
 ```bash
 cd "Test Connections - Database - Collibra"
-python3 main.py
+uv sync
+cp .env.example .env
+uv run python governance_controls/test_edge_connections/test_connection_simple.py
+uv run python governance_controls/test_edge_connections/refresh_governed_connections.py
 ```
 
-See the [project README](Test%20Connections%20-%20Database%20-%20Collibra/README.md) for detailed documentation.
-
-## Repository Structure
+## Repository structure
 
 ```
 .
-├── README.md (this file)
+├── README.md
 └── Test Connections - Database - Collibra/
-    ├── README.md (project-specific documentation)
-    ├── main.py (main orchestrator script)
-    ├── collibra_client/ (Python client library)
-    ├── scripts/ (utility scripts)
-    └── tests/ (test suite)
+    ├── README.md
+    ├── collibra_client/
+    ├── governance_controls/
+    ├── tests/
+    ├── pyproject.toml
+    └── uv.lock
 ```
 
 ## Requirements
 
 - Python 3.9+
-- [`uv`](https://github.com/astral-sh/uv) package manager (recommended) or pip
-- Collibra instance with OAuth application configured
-
-## Getting Started
-
-Each project has its own README with specific setup instructions. Navigate to the project directory and follow the instructions in its README.
-
-## Contributing
-
-Each project maintains its own code quality standards and testing requirements. Refer to individual project READMEs for contribution guidelines.
-
-## License
-
-MIT
+- [`uv`](https://github.com/astral-sh/uv) (recommended) or `pip`
+- A Collibra instance you can authenticate against (OAuth2 or Basic Auth)
