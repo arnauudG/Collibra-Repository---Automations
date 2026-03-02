@@ -34,8 +34,8 @@ This project adheres to a code of conduct that all contributors are expected to 
 
 1. **Fork and clone the repository**:
    ```bash
-   git clone https://github.com/your-username/collibra-governance-automation.git
-   cd collibra-governance-automation
+   git clone https://github.com/arnauudG/Collibra-Repository---Automations.git
+   cd "Collibra-Repository---Automations/Test Connections - Database - Collibra"
    ```
 
 2. **Install dependencies**:

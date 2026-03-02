@@ -1,39 +1,18 @@
-# Collibra Governance SDK
+# Collibra client SDK
 
-The programmatic foundation for governance automation. This standalone Python library provides authenticated, resilient access to Collibra's REST and GraphQL APIs — the interface through which every governance control interrogates, validates, and enforces policy across your data platform.
+`collibra_client` is a small Python SDK used by the controls in `governance_controls/`.
+It focuses on the operations those controls need:
 
-This is not a generic API wrapper. It is purpose-built for governance operations: testing data source connectivity, retrieving ownership metadata, polling asynchronous jobs, and handling the transient failures that are inevitable when validating distributed infrastructure at scale.
+- authenticate (OAuth2 client credentials or Basic Auth)
+- call REST endpoints (including Collibra REST v2)
+- call Edge GraphQL
+- poll async jobs
+- retry transient failures (rate limits / 5xx)
 
-## Table of Contents
+This is not intended to be a full “everything Collibra” wrapper. It’s the minimum surface
+area to run governance automations reliably.
 
-- [Governance Capabilities](#governance-capabilities)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Module Structure](#module-structure)
-- [Usage Examples](#usage-examples)
-- [Testing](#testing)
-- [Configuration](#configuration)
-- [Resilience for Governance Operations](#resilience-for-governance-operations)
-
-## Governance Capabilities
-
-### Authenticated Access to Governance Metadata
-- **OAuth 2.0**: Client credentials flow with automatic token management — built for unattended, scheduled governance enforcement
-- **Token Caching**: Thread-safe token storage with automatic refresh, so long-running governance controls never stall on expired credentials
-- **Basic Auth**: Fallback support for Catalog Database API in environments where OAuth is not available
-
-### API Coverage for Governance Use Cases
-- **REST v2.0**: Query governed assets, retrieve ownership and stewardship information, check user roles
-- **Catalog Database API**: Validate database registrations, manage connection metadata, trigger refresh and synchronization operations
-- **GraphQL (Edge API)**: Test data source connectivity, query Edge Site topology, poll asynchronous job status
-
-### Built for Reliability
-- **Exception Hierarchy**: Governance-specific errors (`CollibraAuthenticationError`, `CollibraAPIError`) with actionable details — controls must distinguish between credential failures and infrastructure issues
-- **Automatic Retry**: Transient failures (429 rate limits, 5xx server errors) are retried with exponential backoff — governance operations must not fail due to momentary infrastructure hiccups
-- **Type Safety**: Full type hints for IDE support and static analysis
-- **Structured Logging**: Configurable logging with colored console output for operational visibility
-
-## Installation
+## Install
 
 ```bash
 # Using uv (recommended)
@@ -43,7 +22,21 @@ uv sync
 pip install -e .
 ```
 
-## Quick Start
+## Configure
+
+Set credentials via `.env` (see the root `.env.example`):
+
+```bash
+COLLIBRA_BASE_URL=https://your-instance.collibra.com
+COLLIBRA_CLIENT_ID=your_client_id
+COLLIBRA_CLIENT_SECRET=your_client_secret
+
+# Optional alternative:
+# COLLIBRA_USERNAME=your_username
+# COLLIBRA_PASSWORD=your_password
+```
+
+## Quick start
 
 ### Authentication Methods
 
@@ -87,7 +80,7 @@ client = CollibraClient(
 )
 ```
 
-### Validate Connectivity
+### Validate connectivity
 
 ```python
 from collibra_client import DatabaseConnectionManager
@@ -108,7 +101,7 @@ for conn in connections:
     print(f"{conn.name} (ID: {conn.id})")
 ```
 
-## Module Structure
+## Where things live
 
 ### `core/` — Governance Infrastructure
 Core functionality that every governance operation depends on:
@@ -123,9 +116,9 @@ Operations for validating and managing the data sources Collibra governs:
 - Support for both OAuth Bearer tokens and Basic Authentication
 - Connection listing, refresh, testing, and metadata synchronization
 
-## Usage Examples
+## Common patterns
 
-### Validate Data Source Connectivity
+### Validate data source connectivity
 
 The most fundamental governance operation: can Collibra still reach the data sources it's supposed to govern?
 
@@ -151,7 +144,7 @@ if client.test_connection():
     print(f"Logged in as: {user.get('username')}")
 ```
 
-### Manage Governed Database Connections
+### Manage governed database connections
 
 Query, refresh, and test the database connections under governance:
 
@@ -178,7 +171,7 @@ job_status = client.get_edge_job_status(job_id)
 print(f"Test status: {job_status.get('status')}")
 ```
 
-### Query Edge Site Topology via GraphQL
+### Query Edge Site topology via GraphQL
 
 Governance controls need to understand the topology of Edge Sites — which connections belong to which sites, and what their current state is:
 
@@ -211,7 +204,7 @@ response = client.post_graphql(
 connections = response["data"]["edgeSiteById"]["connections"]["edges"]
 ```
 
-### Handle Governance Operation Failures
+### Handle failures explicitly
 
 Governance controls must distinguish between different failure modes — an expired credential is a different remediation path than a network timeout:
 
@@ -245,26 +238,6 @@ uv run pytest tests/integration/ -v
 ```
 
 **Note**: Integration tests require valid Collibra credentials in your `.env` file.
-
-## Configuration
-
-The SDK uses environment variables for configuration. Create a `.env` file:
-
-```bash
-# Required: Collibra instance
-COLLIBRA_BASE_URL=https://your-instance.collibra.com
-
-# OAuth 2.0 credentials (recommended for governance automation)
-COLLIBRA_CLIENT_ID=your_client_id
-COLLIBRA_CLIENT_SECRET=your_client_secret
-
-# Optional: Basic Auth (alternative to OAuth)
-COLLIBRA_USERNAME=your_username
-COLLIBRA_PASSWORD=your_password
-
-# Optional: Request timeout (default: 30 seconds)
-COLLIBRA_TIMEOUT=30
-```
 
 ## Resilience for Governance Operations
 
