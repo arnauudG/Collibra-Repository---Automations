@@ -14,9 +14,7 @@ last_updated: 2026-03-02
 
 This repository groups small, Collibra-focused automation projects.
 
-## Projects
-
-### Governance automation platform
+## Governance automation platform
 
 Location: `Test Connections - Database - Collibra/`
 
@@ -24,7 +22,7 @@ Location: `Test Connections - Database - Collibra/`
 - Produces audit-friendly logs (what was tested, what passed/failed, when).
 - Maps failures to impacted Catalog database assets and their owners.
 
-Start here:
+Documentation:
 - [Platform README](Test%20Connections%20-%20Database%20-%20Collibra/README.md)
 - [Controls](Test%20Connections%20-%20Database%20-%20Collibra/governance_controls/README.md)
 - [Connection validation control](Test%20Connections%20-%20Database%20-%20Collibra/governance_controls/test_edge_connections/README.md)
@@ -53,8 +51,12 @@ uv run python governance_controls/test_edge_connections/refresh_governed_connect
     └── uv.lock
 ```
 
-## Requirements
+## Contributing
 
-- Python 3.9+
-- [`uv`](https://github.com/astral-sh/uv) (recommended) or `pip`
-- A Collibra instance you can authenticate against (OAuth2 or Basic Auth)
+Project contribution guidelines live in:
+`Test%20Connections%20-%20Database%20-%20Collibra/CONTRIBUTING.md`
+
+## License
+
+MIT. See:
+`Test%20Connections%20-%20Database%20-%20Collibra/LICENSE`

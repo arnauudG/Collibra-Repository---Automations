@@ -8,3 +8,5 @@ governed_connections:
     description: "Main development Edge Site governing Snowflake and Databricks endpoints."
     environment: "development"
     owner_team: "Data Governance & Engineering Team"
+    
+
